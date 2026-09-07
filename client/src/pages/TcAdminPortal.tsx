@@ -257,7 +257,13 @@ export const TcAdminPortal: React.FC<TcAdminPortalProps> = ({ user }) => {
         row.cheat_flags > 0 ? (
           <span
             className="inline-flex items-center space-x-1 px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 text-[11px] font-medium"
-            title={`Курсант переключал вкладку браузера ${row.cheat_flags} раз(а)`}
+            title={
+              row.remark
+                ? row.remark
+                : row.cheat_flags > 0
+                  ? `Курсант переключал вкладку браузера ${row.cheat_flags} раз(а)`
+                  : undefined
+            }
           >
             <AlertTriangle className="w-3 h-3 text-amber-600" />
             <span>{row.cheat_flags} зам.</span>
@@ -645,8 +651,10 @@ export const TcAdminPortal: React.FC<TcAdminPortalProps> = ({ user }) => {
                     </h4>
                     <p className="text-xs opacity-80">
                       {selectedDetail.passed === 1
-                        ? 'Результат соответствует требованиям ст. 79 ТК РК и Приказу МЗСР РК № 1019.'
-                        : 'Набрано менее 80% правильных ответов. Требуется повторный инструктаж.'}
+                        ? 'Результат соответствует установленным требованиям.'
+                        : selectedDetail.remark
+                          ? selectedDetail.remark
+                          : 'Набрано менее 80% правильных ответов. Требуется повторный инструктаж.'}
                     </p>
                   </div>
                 </div>
@@ -714,12 +722,14 @@ export const TcAdminPortal: React.FC<TcAdminPortalProps> = ({ user }) => {
                   </span>
                   <span
                     className={`font-semibold ${
-                      selectedDetail.cheat_flags > 0 ? 'text-amber-700' : 'text-emerald-700'
+                      selectedDetail.remark || selectedDetail.cheat_flags > 0 ? 'text-amber-700' : 'text-emerald-700'
                     }`}
                   >
-                    {selectedDetail.cheat_flags > 0
-                      ? `⚠️ Зафиксировано ${selectedDetail.cheat_flags} переключение(й) вкладки`
-                      : '✓ Без нарушений (фокус не терялся)'}
+                    {selectedDetail.remark
+                      ? selectedDetail.remark
+                      : selectedDetail.cheat_flags > 0
+                        ? `⚠️ Зафиксировано ${selectedDetail.cheat_flags} переключение(й) вкладки`
+                        : '✓ Без нарушений (фокус не терялся)'}
                   </span>
                 </div>
               </div>

@@ -145,6 +145,43 @@ export const api = {
     return res.json();
   },
 
+  async startTest(courseId: number, options?: { forceNew?: boolean }): Promise<{
+    status: 'started' | 'voided';
+    questions?: Question[];
+    result?: TestSubmissionResult;
+  }> {
+    const res = await fetchWithAuth('/tests/start', {
+      method: 'POST',
+      body: JSON.stringify({
+        course_id: courseId,
+        force_new: Boolean(options?.forceNew)
+      })
+    });
+    return res.json();
+  },
+
+  async abandonTest(courseId: number): Promise<{ status: string; result?: TestSubmissionResult }> {
+    const res = await fetchWithAuth('/tests/abandon', {
+      method: 'POST',
+      body: JSON.stringify({ course_id: courseId })
+    });
+    return res.json();
+  },
+
+  abandonTestBeacon(courseId: number) {
+    const token = getToken();
+    if (!token) return;
+    fetch(`${API_BASE}/tests/abandon`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ course_id: courseId }),
+      keepalive: true
+    }).catch(() => {});
+  },
+
   async submitTest(courseId: number, answers: Record<number, number>, cheatFlags: number): Promise<TestSubmissionResult> {
     const res = await fetchWithAuth('/tests/submit', {
       method: 'POST',

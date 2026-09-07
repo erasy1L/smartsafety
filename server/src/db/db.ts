@@ -123,6 +123,18 @@ export function initDatabase() {
       cadet_fio TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS test_attempts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      cadet_fio TEXT NOT NULL,
+      group_id INTEGER NOT NULL,
+      course_id INTEGER NOT NULL,
+      tc_id INTEGER NOT NULL,
+      status TEXT NOT NULL DEFAULT 'in_progress',
+      result_id INTEGER,
+      started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(cadet_fio, group_id, course_id)
+    );
   `);
 
   try {
@@ -130,6 +142,9 @@ export function initDatabase() {
   } catch {}
   try {
     db.exec('ALTER TABLE test_results ADD COLUMN answers_json TEXT;');
+  } catch {}
+  try {
+    db.exec('ALTER TABLE test_results ADD COLUMN remark TEXT;');
   } catch {}
 
   seedInitialData();

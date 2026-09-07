@@ -282,6 +282,7 @@ reportsRouter.get('/export-excel', authMiddleware(['tc_admin', 'super_admin']), 
            tr.percentage,
            tr.passed,
            tr.cheat_flags,
+           tr.remark,
            tr.completed_at
     FROM test_results tr
     JOIN groups g ON tr.group_id = g.id
@@ -320,7 +321,11 @@ reportsRouter.get('/export-excel', authMiddleware(['tc_admin', 'super_admin']), 
     'Набрано баллов': `${r.score} из ${r.max_score}`,
     'Процент правильных': `${r.percentage}%`,
     'Результат': r.passed === 1 ? 'СДАН' : 'НЕ СДАН',
-    'Замечания прокторинга': r.cheat_flags > 0 ? `Потеря фокуса (${r.cheat_flags} раз)` : 'Без нарушений',
+    'Замечания прокторинга': r.remark
+      ? r.remark
+      : r.cheat_flags > 0
+        ? `Потеря фокуса (${r.cheat_flags} раз)`
+        : 'Без нарушений',
     'Дата и время сдачи': r.completed_at
   }));
 
@@ -338,7 +343,7 @@ reportsRouter.get('/export-excel', authMiddleware(['tc_admin', 'super_admin']), 
     { wch: 16 },
     { wch: 18 },
     { wch: 14 },
-    { wch: 25 },
+    { wch: 55 },
     { wch: 20 }
   ];
 

@@ -103,7 +103,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate, onRequestDemo 
             <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg space-y-1.5">
               <div className="font-bold text-slate-900 flex items-center space-x-2">
                 <CheckCircle2 className="w-4 h-4 text-blue-600" />
-                <span>Приказ Министра здравоохранения и соц. развития РК № 1019</span>
+                <span>Правила проверки знаний № 1019</span>
               </div>
               <p className="text-slate-600 pl-6">
                 «Об утверждении Правил и сроков проведения обучения, инструктирования и проверок знаний по вопросам безопасности и охраны труда работников». Экзаменационный модуль платформы строго настроен на 80% порог прохождения и регламентированный хронометраж.
@@ -135,7 +135,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate, onRequestDemo 
               onClick={onRequestDemo}
               className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded text-sm font-semibold uppercase tracking-wider transition"
             >
-              Запросить презентацию для руководства
+              Запросить демо для руководства
             </button>
             <button
               onClick={() => onNavigate('/contacts')}

@@ -21,6 +21,7 @@ import { api } from '../api/client';
 import { Course, Question, TestSubmissionResult, UserSession } from '../types';
 import { PresentationViewer } from '../components/PresentationViewer';
 import { CadetFioModal } from '../components/CadetFioModal';
+import { QuestionPagination } from '../components/QuestionPagination';
 import { useAntiCheat } from '../hooks/useAntiCheat';
 
 interface CadetPortalProps {
@@ -36,7 +37,7 @@ export const CadetPortal: React.FC<CadetPortalProps> = ({ user, onUpdateUser }) 
 
   // Active study state
   const [activeCourse, setActiveCourse] = useState<Course | null>(null);
-  const [activeTab, setActiveTab] = useState<'presentation' | 'text' | 'video' | 'test'>('presentation');
+  const [activeTab, setActiveTab] = useState<'presentation' | 'text' | 'video' | 'test'>('text');
 
   // Testing state
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -80,7 +81,7 @@ export const CadetPortal: React.FC<CadetPortalProps> = ({ user, onUpdateUser }) 
       setLoading(true);
       const fullCourse = await api.getCourseById(courseId);
       setActiveCourse(fullCourse);
-      setActiveTab('presentation');
+      setActiveTab('text');
       setTestResult(null);
       setSelectedAnswers({});
       setCurrentQuestionIndex(0);
@@ -92,24 +93,70 @@ export const CadetPortal: React.FC<CadetPortalProps> = ({ user, onUpdateUser }) 
     }
   };
 
+  const handleLeaveCourse = async () => {
+    const shouldAbandon = Boolean(activeCourse && activeTab === 'test' && !testResult);
+    const courseId = activeCourse?.id;
+    setQuestions([]);
+    setActiveTab('text');
+    if (shouldAbandon && courseId) {
+      try {
+        await api.abandonTest(courseId);
+      } catch {
+        api.abandonTestBeacon(courseId);
+      }
+    }
+    setActiveCourse(null);
+    setTestResult(null);
+    setSelectedAnswers({});
+    setCurrentQuestionIndex(0);
+    resetCheatFlags();
+  };
+
   // Start test
-  const handleStartTest = async () => {
+  const handleStartTest = async (options?: { forceNew?: boolean }) => {
     if (!activeCourse) return;
+    if (!options?.forceNew && activeTab === 'test' && !testResult && questions.length > 0) {
+      return;
+    }
     try {
       setLoading(true);
-      const testQs = await api.getQuestions(activeCourse.id);
+      const data = await api.startTest(activeCourse.id, { forceNew: options?.forceNew });
+      if (data.status === 'voided' && data.result) {
+        setQuestions([]);
+        setSelectedAnswers({});
+        setCurrentQuestionIndex(0);
+        setTestResult(data.result);
+        setActiveTab('test');
+        return;
+      }
+      const testQs = data.questions || [];
       setQuestions(testQs);
       setSelectedAnswers({});
       setCurrentQuestionIndex(0);
-      setTimeRemaining(testQs.length * 180); // 3 mins per question
+      setTimeRemaining(testQs.length * 180);
       setTestResult(null);
       setActiveTab('test');
+      resetCheatFlags();
     } catch (err: any) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (activeTab !== 'test' || testResult || !activeCourse) return;
+    const courseId = activeCourse.id;
+    const onPageLeave = () => {
+      api.abandonTestBeacon(courseId);
+    };
+    window.addEventListener('pagehide', onPageLeave);
+    window.addEventListener('beforeunload', onPageLeave);
+    return () => {
+      window.removeEventListener('pagehide', onPageLeave);
+      window.removeEventListener('beforeunload', onPageLeave);
+    };
+  }, [activeTab, testResult, activeCourse]);
 
   // Timer countdown during test
   useEffect(() => {
@@ -147,6 +194,8 @@ export const CadetPortal: React.FC<CadetPortalProps> = ({ user, onUpdateUser }) 
     const secs = seconds % 60;
     return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
   };
+
+  const studyTabsLocked = activeTab === 'test' && !testResult;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 pb-16">
@@ -317,7 +366,7 @@ export const CadetPortal: React.FC<CadetPortalProps> = ({ user, onUpdateUser }) 
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-4">
               <div>
                 <button
-                  onClick={() => setActiveCourse(null)}
+                  onClick={handleLeaveCourse}
                   className="text-sm text-blue-600 hover:underline flex items-center space-x-1 mb-1"
                 >
                   <span>← Назад к списку курсов группы</span>
@@ -345,35 +394,47 @@ export const CadetPortal: React.FC<CadetPortalProps> = ({ user, onUpdateUser }) 
             {/* Navigation Tabs */}
             <div className="flex border-b border-slate-200 space-x-2 overflow-x-auto text-xs font-semibold">
               <button
-                onClick={() => setActiveTab('presentation')}
-                className={`py-3 px-4 flex items-center space-x-2 border-b-2 transition ${
-                  activeTab === 'presentation'
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <BookOpen className="w-4 h-4" />
-                <span>1. Учебная презентация</span>
-              </button>
-
-              <button
+                type="button"
+                disabled={studyTabsLocked}
                 onClick={() => setActiveTab('text')}
                 className={`py-3 px-4 flex items-center space-x-2 border-b-2 transition ${
-                  activeTab === 'text'
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-slate-600 hover:text-slate-900'
+                  studyTabsLocked
+                    ? 'border-transparent text-slate-400 cursor-not-allowed opacity-50'
+                    : activeTab === 'text'
+                      ? 'border-blue-600 text-blue-600'
+                      : 'border-transparent text-slate-600 hover:text-slate-900'
                 }`}
               >
                 <FileText className="w-4 h-4" />
-                <span>2. Нормативный конспект</span>
+                <span>1. Нормативный конспект</span>
               </button>
 
               <button
+                type="button"
+                disabled={studyTabsLocked}
+                onClick={() => setActiveTab('presentation')}
+                className={`py-3 px-4 flex items-center space-x-2 border-b-2 transition ${
+                  studyTabsLocked
+                    ? 'border-transparent text-slate-400 cursor-not-allowed opacity-50'
+                    : activeTab === 'presentation'
+                      ? 'border-blue-600 text-blue-600'
+                      : 'border-transparent text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <BookOpen className="w-4 h-4" />
+                <span>2. Учебная презентация</span>
+              </button>
+
+              <button
+                type="button"
+                disabled={studyTabsLocked}
                 onClick={() => setActiveTab('video')}
                 className={`py-3 px-4 flex items-center space-x-2 border-b-2 transition ${
-                  activeTab === 'video'
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-slate-600 hover:text-slate-900'
+                  studyTabsLocked
+                    ? 'border-transparent text-slate-400 cursor-not-allowed opacity-50'
+                    : activeTab === 'video'
+                      ? 'border-blue-600 text-blue-600'
+                      : 'border-transparent text-slate-600 hover:text-slate-900'
                 }`}
               >
                 <Play className="w-4 h-4" />
@@ -381,7 +442,11 @@ export const CadetPortal: React.FC<CadetPortalProps> = ({ user, onUpdateUser }) 
               </button>
 
               <button
-                onClick={handleStartTest}
+                type="button"
+                onClick={() => {
+                  if (activeTab === 'test' && !testResult) return;
+                  handleStartTest();
+                }}
                 className={`py-3 px-4 flex items-center space-x-2 border-b-2 transition ${
                   activeTab === 'test'
                     ? 'border-blue-600 text-blue-600 font-bold'
@@ -422,7 +487,7 @@ export const CadetPortal: React.FC<CadetPortalProps> = ({ user, onUpdateUser }) 
             {activeTab === 'video' && (
               <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
                 <h3 className="text-base font-bold text-slate-900">
-                  Видеоматериалы и разбор производственных ситуаций
+                  Видеоматериалы
                 </h3>
                 <div className="aspect-video w-full bg-slate-900 rounded-lg overflow-hidden flex items-center justify-center text-white">
                   {activeCourse.video_url ? (
@@ -467,12 +532,18 @@ export const CadetPortal: React.FC<CadetPortalProps> = ({ user, onUpdateUser }) 
                             Итоговый результат
                           </span>
                           <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight">
-                            {testResult.passed ? 'ЭКЗАМЕН УСПЕШНО СДАН' : 'ТЕСТ НЕ ПРОЙДЕН'}
+                            {testResult.passed
+                              ? 'ЭКЗАМЕН УСПЕШНО СДАН'
+                              : testResult.aborted
+                                ? 'ТЕСТ АННУЛИРОВАН'
+                                : 'ТЕСТ НЕ ПРОЙДЕН'}
                           </h2>
                           <p className="text-xs mt-0.5">
                             {testResult.passed
-                              ? 'Квалификация подтверждена в соответствии с требованиями законодательства РК.'
-                              : 'Набрано менее 80% правильных ответов. Требуется повторное изучение материала.'}
+                              ? 'Квалификация подтверждена.'
+                              : testResult.remark
+                                ? testResult.remark
+                                : 'Набрано менее 80% правильных ответов. Требуется повторное изучение материала.'}
                           </p>
                         </div>
                       </div>
@@ -526,10 +597,12 @@ export const CadetPortal: React.FC<CadetPortalProps> = ({ user, onUpdateUser }) 
                         </div>
                         <div>
                           <span className="text-slate-400 block">Замечания античита:</span>
-                          <span className={testResult.cheat_flags > 0 ? 'text-red-600 font-bold' : 'text-emerald-700'}>
-                            {testResult.cheat_flags > 0
-                              ? `Потеря фокуса (${testResult.cheat_flags})`
-                              : 'Нарушений не зафиксировано'}
+                          <span className={testResult.remark || testResult.cheat_flags > 0 ? 'text-red-600 font-bold' : 'text-emerald-700'}>
+                            {testResult.remark
+                              ? testResult.remark
+                              : testResult.cheat_flags > 0
+                                ? `Потеря фокуса (${testResult.cheat_flags})`
+                                : 'Нарушений не зафиксировано'}
                           </span>
                         </div>
                       </div>
@@ -543,7 +616,7 @@ export const CadetPortal: React.FC<CadetPortalProps> = ({ user, onUpdateUser }) 
                           <span>Распечатать цифровой протокол</span>
                         </button>
                         <button
-                          onClick={handleStartTest}
+                          onClick={() => handleStartTest({ forceNew: true })}
                           className="px-4 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded text-sm font-semibold flex items-center space-x-2 transition"
                         >
                           <RotateCcw className="w-4 h-4" />
@@ -694,19 +767,25 @@ export const CadetPortal: React.FC<CadetPortalProps> = ({ user, onUpdateUser }) 
                     )}
 
                     {/* Bottom Navigation Buttons */}
-                    <div className="flex items-center justify-between border-t border-slate-200 pt-5">
+                    <div className="flex items-center justify-between gap-3 border-t border-slate-200 pt-5 flex-wrap sm:flex-nowrap">
                       <button
                         onClick={() => setCurrentQuestionIndex(prev => Math.max(0, prev - 1))}
                         disabled={currentQuestionIndex === 0}
-                        className="px-4 py-2 border border-slate-300 rounded text-sm font-semibold text-slate-700 disabled:opacity-40 hover:bg-slate-50 transition"
+                        className="px-4 py-2 border border-slate-300 rounded text-sm font-semibold text-slate-700 disabled:opacity-40 hover:bg-slate-50 transition shrink-0"
                       >
                         ← Предыдущий вопрос
                       </button>
 
+                      <QuestionPagination
+                        total={questions.length}
+                        currentIndex={currentQuestionIndex}
+                        onChange={setCurrentQuestionIndex}
+                      />
+
                       {currentQuestionIndex < questions.length - 1 ? (
                         <button
                           onClick={() => setCurrentQuestionIndex(prev => prev + 1)}
-                          className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded text-sm font-semibold transition flex items-center space-x-1.5"
+                          className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded text-sm font-semibold transition flex items-center space-x-1.5 shrink-0"
                         >
                           <span>Следующий вопрос</span>
                           <ChevronRight className="w-4 h-4" />
@@ -715,7 +794,7 @@ export const CadetPortal: React.FC<CadetPortalProps> = ({ user, onUpdateUser }) 
                         <button
                           onClick={handleSubmitTest}
                           disabled={testSubmitting}
-                          className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-400 text-white rounded text-sm font-bold uppercase tracking-wider transition shadow-sm flex items-center space-x-2"
+                          className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-400 text-white rounded text-sm font-bold uppercase tracking-wider transition shadow-sm flex items-center space-x-2 shrink-0"
                         >
                           <CheckCircle2 className="w-4 h-4" />
                           <span>{testSubmitting ? 'Проверка...' : 'Завершить экзамен'}</span>

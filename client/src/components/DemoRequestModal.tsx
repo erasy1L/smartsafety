@@ -49,7 +49,7 @@ export const DemoRequestModal: React.FC<DemoRequestModalProps> = ({ isOpen, onCl
           <div className="flex items-center space-x-2.5">
             <ShieldCheck className="w-5 h-5 text-blue-400" />
             <h3 className="font-bold text-sm tracking-tight text-white">
-              Запрос презентации платформы SmartSafety
+              Запрос демо платформы SmartSafety
             </h3>
           </div>
           <button
@@ -197,7 +197,7 @@ export const DemoRequestModal: React.FC<DemoRequestModalProps> = ({ isOpen, onCl
                 ) : (
                   <>
                     <Send className="w-3.5 h-3.5" />
-                    <span>Запросить презентацию платформы</span>
+                    <span>Запросить демо</span>
                   </>
                 )}
               </button>

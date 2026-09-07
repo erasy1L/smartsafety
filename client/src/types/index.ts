@@ -55,6 +55,8 @@ export interface TestSubmissionResult {
   passed: boolean;
   cheat_flags: number;
   completed_at: string;
+  remark?: string | null;
+  aborted?: boolean;
   review?: {
     question_id: number;
     text: string;
@@ -79,6 +81,7 @@ export interface ReportResult {
   passed: number;
   cheat_flags: number;
   completed_at: string;
+  remark?: string | null;
   group_name: string;
   group_code: string;
   course_title: string;

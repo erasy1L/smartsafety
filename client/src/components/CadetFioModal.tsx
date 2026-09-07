@@ -122,7 +122,7 @@ export const CadetFioModal: React.FC<CadetFioModalProps> = ({
           </div>
 
           <p className="text-[11px] text-center text-slate-400 leading-tight">
-            Согласно нормам ст. 79 Трудового Кодекса РК и Приказа МЗСР РК № 1019, фиксация цифрового следа и персонификация обучения обязательны.
+            Фиксация цифрового следа и персонификация обучения обязательны.
           </p>
         </form>
       </div>
