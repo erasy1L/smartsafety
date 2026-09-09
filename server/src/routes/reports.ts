@@ -9,6 +9,7 @@ const SORT_COLUMNS: Record<string, string> = {
   protocol_id: 'tr.protocol_id',
   cadet_fio: 'tr.cadet_fio',
   group: 'g.name',
+  enterprise: 'e.name',
   course_title: 'c.title',
   score: 'tr.percentage',
   status: 'tr.passed',
@@ -22,7 +23,7 @@ function clampPageSize(raw: unknown) {
   return Math.min(50, Math.max(5, Math.round(value)));
 }
 
-function buildResultsFilter(session: { role: string; tc_id?: number | null }, query: Request['query']) {
+function buildResultsFilter(session: { role: string; tc_id?: number | null; enterprise_id?: number | null }, query: Request['query']) {
   let where = ' WHERE 1=1';
   const params: any[] = [];
 
@@ -31,9 +32,34 @@ function buildResultsFilter(session: { role: string; tc_id?: number | null }, qu
     params.push(session.tc_id!);
   }
 
+  if (session.role === 'company_admin') {
+    where += ' AND g.enterprise_id = ?';
+    params.push(session.enterprise_id!);
+  } else if (query.enterprise_id) {
+    where += ' AND g.enterprise_id = ?';
+    params.push(Number(query.enterprise_id));
+  }
+
   if (query.group_id) {
     where += ' AND tr.group_id = ?';
     params.push(Number(query.group_id));
+  }
+
+  if (query.course_id) {
+    where += ' AND tr.course_id = ?';
+    params.push(Number(query.course_id));
+  }
+
+  const dateFrom = String(query.date_from ?? query.dateFrom ?? '').trim();
+  if (dateFrom) {
+    where += ' AND substr(tr.completed_at, 1, 10) >= ?';
+    params.push(dateFrom);
+  }
+
+  const dateTo = String(query.date_to ?? query.dateTo ?? '').trim();
+  if (dateTo) {
+    where += ' AND substr(tr.completed_at, 1, 10) <= ?';
+    params.push(dateTo);
   }
 
   if (query.search_fio) {
@@ -105,11 +131,12 @@ function computeAttemptStats(rows: Array<{
 }
 
 // GET /api/reports/groups - Список групп для фильтрации в кабинете УЦ
-reportsRouter.get('/groups', authMiddleware(['tc_admin', 'super_admin']), (req: Request, res: Response) => {
+reportsRouter.get('/groups', authMiddleware(['tc_admin', 'company_admin', 'super_admin']), (req: Request, res: Response) => {
   const session = req.session!;
 
   let sql = `
     SELECT g.id, g.name, g.group_code, g.login, g.active, g.created_at,
+           g.enterprise_id,
            tc.name as tc_name,
            e.name as enterprise_name,
            (SELECT COUNT(*) FROM test_results tr WHERE tr.group_id = g.id) as tests_completed_count
@@ -122,17 +149,24 @@ reportsRouter.get('/groups', authMiddleware(['tc_admin', 'super_admin']), (req: 
   if (session.role === 'tc_admin') {
     sql += ' WHERE g.tc_id = ?';
     params.push(session.tc_id!);
+  } else if (session.role === 'company_admin') {
+    sql += ' WHERE g.enterprise_id = ?';
+    params.push(session.enterprise_id!);
   }
 
   sql += ' ORDER BY g.id DESC';
 
   const stmt = db.prepare(sql);
-  const groups = stmt.all(...params);
+  const groups = stmt.all(...params) as any[];
+  const gcStmt = db.prepare('SELECT course_id FROM group_courses WHERE group_id = ?');
+  for (const group of groups) {
+    group.course_ids = (gcStmt.all(group.id) as { course_id: number }[]).map((row) => row.course_id);
+  }
   res.json(groups);
 });
 
 // GET /api/reports/results - Детальная таблица результатов курсантов (пагинация)
-reportsRouter.get('/results', authMiddleware(['tc_admin', 'super_admin']), (req: Request, res: Response) => {
+reportsRouter.get('/results', authMiddleware(['tc_admin', 'company_admin', 'super_admin']), (req: Request, res: Response) => {
   const session = req.session!;
   const { where, params } = buildResultsFilter(session, req.query);
 
@@ -186,7 +220,7 @@ reportsRouter.get('/results', authMiddleware(['tc_admin', 'super_admin']), (req:
 });
 
 // GET /api/reports/results/:id/details - Детальный просмотр протокола и повопросного отчета курсанта
-reportsRouter.get('/results/:id/details', authMiddleware(['tc_admin', 'super_admin']), (req: Request, res: Response) => {
+reportsRouter.get('/results/:id/details', authMiddleware(['tc_admin', 'company_admin', 'super_admin']), (req: Request, res: Response) => {
   const session = req.session!;
   const resultId = Number(req.params.id);
 
@@ -210,6 +244,9 @@ reportsRouter.get('/results/:id/details', authMiddleware(['tc_admin', 'super_adm
   if (session.role === 'tc_admin') {
     sql += ' AND tr.tc_id = ?';
     params.push(session.tc_id!);
+  } else if (session.role === 'company_admin') {
+    sql += ' AND g.enterprise_id = ?';
+    params.push(session.enterprise_id!);
   }
 
   const result = db.prepare(sql).get(...params) as any;
@@ -265,12 +302,11 @@ reportsRouter.get('/results/:id/details', authMiddleware(['tc_admin', 'super_adm
 });
 
 // GET /api/reports/export-excel - Выгрузка таблицы в настоящий файл Excel (.xlsx)
-reportsRouter.get('/export-excel', authMiddleware(['tc_admin', 'super_admin']), (req: Request, res: Response) => {
-
+reportsRouter.get('/export-excel', authMiddleware(['tc_admin', 'company_admin', 'super_admin']), (req: Request, res: Response) => {
   const session = req.session!;
-  const { group_id } = req.query;
+  const { where, params } = buildResultsFilter(session, req.query);
 
-  let sql = `
+  const sql = `
     SELECT tr.protocol_id,
            tr.cadet_fio,
            tc.name as tc_name,
@@ -289,22 +325,9 @@ reportsRouter.get('/export-excel', authMiddleware(['tc_admin', 'super_admin']), 
     JOIN courses c ON tr.course_id = c.id
     JOIN training_centers tc ON tr.tc_id = tc.id
     LEFT JOIN enterprises e ON g.enterprise_id = e.id
-    WHERE 1=1
+    ${where}
+    ORDER BY tr.id DESC
   `;
-
-  const params: any[] = [];
-
-  if (session.role === 'tc_admin') {
-    sql += ' AND tr.tc_id = ?';
-    params.push(session.tc_id!);
-  }
-
-  if (group_id) {
-    sql += ' AND tr.group_id = ?';
-    params.push(Number(group_id));
-  }
-
-  sql += ' ORDER BY tr.id DESC';
 
   const stmt = db.prepare(sql);
   const rows = stmt.all(...params) as any[];

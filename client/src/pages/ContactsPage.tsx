@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Mail, Phone, MapPin, Send, CheckCircle2, MessageSquare, ExternalLink, Navigation } from 'lucide-react';
 import { api } from '../api/client';
+import { m } from '../paraglide/messages.js';
 
 export const ContactsPage: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -17,7 +18,7 @@ export const ContactsPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name || !formData.tcName || !formData.phone) {
-      setError('Пожалуйста, укажите имя, название УЦ и телефон для связи');
+      setError(m.contacts_required());
       return;
     }
 
@@ -28,7 +29,7 @@ export const ContactsPage: React.FC = () => {
       setSuccess(true);
       setFormData({ name: '', tcName: '', phone: '', email: '', message: '' });
     } catch (err: any) {
-      setError(err.message || 'Ошибка отправки сообщения');
+      setError(err.message || m.contacts_send_error());
     } finally {
       setLoading(false);
     }
@@ -41,13 +42,13 @@ export const ContactsPage: React.FC = () => {
         <div className="max-w-app mx-auto space-y-3">
           <div className="inline-flex items-center space-x-2 text-xs font-semibold text-blue-400 uppercase tracking-wider bg-blue-950 px-3 py-1 rounded border border-blue-800">
             <Mail className="w-3.5 h-3.5" />
-            <span>Контакты и представительство</span>
+            <span>{m.contacts_badge()}</span>
           </div>
           <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white leading-tight">
-            Свяжитесь с командой SmartSafety в Казахстане
+            {m.contacts_title()}
           </h1>
           <p className="text-sm text-slate-300 leading-relaxed max-w-2xl">
-            Мы готовы провести выездную или онлайн-демонстрацию для руководства вашего учебного центра в любом регионе Республики Казахстан.
+            {m.contacts_lead()}
           </p>
         </div>
       </section>
@@ -59,25 +60,25 @@ export const ContactsPage: React.FC = () => {
           <div className="bg-white p-8 rounded-xl border border-slate-200 shadow-sm space-y-6">
             <div>
               <h2 className="text-xl font-bold text-slate-900 tracking-tight">
-                Форма обратной связи для Учебных Центров
+                {m.contacts_form_title()}
               </h2>
               <p className="text-xs text-slate-500 mt-1">
-                Заполните форму, и ведущий специалист по внедрению свяжется с вами в течение 15 минут в рабочее время.
+                {m.contacts_form_sub()}
               </p>
             </div>
 
             {success ? (
               <div className="p-6 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-900 space-y-3 text-center">
                 <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto" />
-                <h4 className="font-bold text-sm">Ваше сообщение успешно отправлено!</h4>
+                <h4 className="font-bold text-sm">{m.contacts_success_title()}</h4>
                 <p className="text-xs text-emerald-800 leading-relaxed">
-                  Менеджер по работе с учебными центрами уже обрабатывает заявку. Мы подготовим индивидуальный расчет и перезвоним вам.
+                  {m.contacts_success_text()}
                 </p>
                 <button
                   onClick={() => setSuccess(false)}
                   className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded text-sm font-semibold transition"
                 >
-                  Отправить еще одно сообщение
+                  {m.contacts_send_another()}
                 </button>
               </div>
             ) : (
@@ -85,7 +86,7 @@ export const ContactsPage: React.FC = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700">
-                      Ваше ФИО <span className="text-red-500">*</span>
+                      {m.contacts_name()} <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
@@ -99,7 +100,7 @@ export const ContactsPage: React.FC = () => {
 
                   <div className="space-y-1">
                     <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700">
-                      Название УЦ <span className="text-red-500">*</span>
+                      {m.contacts_tc()} <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
@@ -115,7 +116,7 @@ export const ContactsPage: React.FC = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700">
-                      Телефон в Казахстане <span className="text-red-500">*</span>
+                      {m.contacts_phone()} <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="tel"
@@ -129,7 +130,7 @@ export const ContactsPage: React.FC = () => {
 
                   <div className="space-y-1">
                     <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700">
-                      Электронная почта
+                      {m.contacts_email()}
                     </label>
                     <input
                       type="email"
@@ -143,13 +144,13 @@ export const ContactsPage: React.FC = () => {
 
                 <div className="space-y-1">
                   <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700">
-                    Сообщение или вопрос
+                    {m.contacts_message()}
                   </label>
                   <textarea
                     rows={4}
                     value={formData.message}
                     onChange={e => setFormData({ ...formData, message: e.target.value })}
-                    placeholder="Опишите ваши потребности (число обучающихся курсантов, интеграции с предприятиями, запуск тестов...)"
+                    placeholder={m.contacts_message_ph()}
                     className="w-full px-3.5 py-2.5 border border-slate-300 rounded text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
                   />
                 </div>
@@ -166,11 +167,11 @@ export const ContactsPage: React.FC = () => {
                   className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-bold uppercase tracking-wider transition flex items-center justify-center space-x-2 shadow-sm"
                 >
                   {loading ? (
-                    <span>Отправка данных...</span>
+                    <span>{m.contacts_sending()}</span>
                   ) : (
                     <>
                       <Send className="w-4 h-4" />
-                      <span>Отправить запрос на подключение УЦ</span>
+                      <span>{m.contacts_submit()}</span>
                     </>
                   )}
                 </button>
@@ -180,7 +181,7 @@ export const ContactsPage: React.FC = () => {
             {/* Quick Messengers Block */}
             <div className="pt-6 border-t border-slate-200 space-y-3">
               <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                Быстрая связь в мессенджерах:
+                {m.contacts_messengers()}
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <a
@@ -225,7 +226,7 @@ export const ContactsPage: React.FC = () => {
               <div className="bg-slate-900 px-5 py-3.5 text-white flex items-center justify-between border-b border-slate-800">
                 <div className="flex items-center space-x-2">
                   <MapPin className="w-4 h-4 text-blue-400" />
-                  <span className="font-bold text-xs">Главный офис: г. Алматы, Казахстан</span>
+                  <span className="font-bold text-xs">{m.contacts_office()}</span>
                 </div>
                 <span className="text-[11px] bg-blue-950 text-blue-300 border border-blue-800 px-2 py-0.5 rounded font-mono">
                   43.2220° N, 76.9535° E
@@ -255,13 +256,13 @@ export const ContactsPage: React.FC = () => {
 
                   {/* Street Labels */}
                   <text x="30" y="192" fill="#64748b" fontSize="11" fontFamily="sans-serif">
-                    пр. Аль-Фараби
+                    {m.contacts_street_alfarabi()}
                   </text>
                   <text x="455" y="80" fill="#64748b" fontSize="11" fontFamily="sans-serif">
-                    пр. Достык
+                    {m.contacts_street_dostyk()}
                   </text>
                   <text x="305" y="80" fill="#64748b" fontSize="11" fontFamily="sans-serif">
-                    пр. Назарбаева
+                    {m.contacts_street_nazar()}
                   </text>
 
                   {/* Financial District Buildings */}
@@ -278,13 +279,13 @@ export const ContactsPage: React.FC = () => {
                 {/* Floating Office Card over Map */}
                 <div className="absolute bottom-4 left-4 right-4 bg-slate-900/90 backdrop-blur border border-slate-700 p-3.5 rounded-lg shadow-lg text-white space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-xs text-blue-300">БЦ «Нурлы Тау», блок 4Б, 9 этаж</span>
+                    <span className="font-bold text-xs text-blue-300">{m.contacts_bc()}</span>
                     <span className="text-[11px] text-emerald-400 font-semibold bg-emerald-950 px-1.5 py-0.5 rounded border border-emerald-800">
-                      Открыто 09:00 - 18:00
+                      {m.contacts_hours()}
                     </span>
                   </div>
                   <p className="text-xs text-slate-300">
-                    проспект Аль-Фараби, 19, Бостандыкский район, г. Алматы, 050059
+                    {m.contacts_address()}
                   </p>
                   <div className="flex items-center space-x-2 pt-1">
                     <a
@@ -294,7 +295,7 @@ export const ContactsPage: React.FC = () => {
                       className="text-xs text-blue-400 hover:text-blue-300 flex items-center space-x-1"
                     >
                       <Navigation className="w-3 h-3" />
-                      <span>Открыть в Яндекс Картах / 2GIS</span>
+                      <span>{m.contacts_maps()}</span>
                     </a>
                   </div>
                 </div>
@@ -304,29 +305,29 @@ export const ContactsPage: React.FC = () => {
             {/* Requisites Box */}
             <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
               <h3 className="font-bold text-sm text-slate-900 uppercase tracking-wider">
-                Официальные реквизиты компании
+                {m.contacts_requisites()}
               </h3>
               <div className="space-y-2.5 text-xs text-slate-700">
                 <div className="flex justify-between py-1 border-b border-slate-100">
-                  <span className="text-slate-500">Юридическое наименование:</span>
+                  <span className="text-slate-500">{m.contacts_legal_name()}</span>
                   <span className="font-semibold text-slate-900">ТОО «SmartSafety Technologies»</span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-slate-100">
-                  <span className="text-slate-500">БИН организации:</span>
+                  <span className="text-slate-500">{m.contacts_bin()}</span>
                   <span className="font-mono font-bold text-slate-900">220940018932</span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-slate-100">
-                  <span className="text-slate-500">Головной офис:</span>
-                  <span className="font-semibold text-slate-900">Республика Казахстан, г. Алматы</span>
+                  <span className="text-slate-500">{m.contacts_hq()}</span>
+                  <span className="font-semibold text-slate-900">{m.contacts_hq_value()}</span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-slate-100">
-                  <span className="text-slate-500">Горячая линия:</span>
+                  <span className="text-slate-500">{m.contacts_hotline()}</span>
                   <a href="tel:+77273495510" className="font-semibold text-blue-700 hover:underline">
                     +7 (727) 349-55-10
                   </a>
                 </div>
                 <div className="flex justify-between py-1">
-                  <span className="text-slate-500">Отдел по работе с УЦ:</span>
+                  <span className="text-slate-500">{m.contacts_tc_dept()}</span>
                   <a href="mailto:director@smartsafety.kz" className="font-semibold text-blue-700 hover:underline">
                     director@smartsafety.kz
                   </a>

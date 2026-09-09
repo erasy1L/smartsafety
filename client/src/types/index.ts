@@ -1,4 +1,4 @@
-export type UserRole = 'cadet' | 'tc_admin' | 'super_admin';
+export type UserRole = 'cadet' | 'tc_admin' | 'company_admin' | 'super_admin';
 
 export interface UserSession {
   token: string;
@@ -10,6 +10,7 @@ export interface UserSession {
   group_id?: number;
   group_name?: string;
   group_code?: string;
+  enterprise_id?: number;
   enterprise_name?: string;
   cadet_fio?: string | null;
 }
@@ -34,6 +35,8 @@ export interface Course {
   text_content?: string;
   video_url?: string;
   question_count?: number;
+  owner_tc_id?: number | null;
+  owner_tc_name?: string | null;
 }
 
 export interface Question {
@@ -115,11 +118,117 @@ export interface GroupItem {
   password?: string;
   tc_id: number;
   tc_name?: string;
+  enterprise_id?: number;
   enterprise_name?: string;
   active: number;
   created_at: string;
   course_ids?: number[];
   tests_completed_count?: number;
+}
+
+export interface BillingTariff {
+  period: 'monthly' | 'annual';
+  title: string;
+  duration: string;
+  amount: number;
+  vat: number;
+  note: string;
+}
+
+export interface BillingSubscription {
+  tc_id: number;
+  tc_name: string;
+  tc_bin: string;
+  tc_city: string;
+  tc_email?: string;
+  tc_phone?: string;
+  contract_number: string;
+  plan: 'monthly' | 'annual';
+  plan_label: string;
+  valid_from: string;
+  valid_until: string;
+  valid_from_label: string;
+  valid_until_label: string;
+  days_remaining: number;
+  status: 'active' | 'expiring' | 'expired';
+  status_label: string;
+  auto_renew: boolean;
+  monthly_amount: number;
+  annual_amount: number;
+  current_amount: number;
+  current_vat: number;
+}
+
+export interface BillingDocument {
+  id: number;
+  tc_id: number;
+  doc_number: string;
+  kind: string;
+  period: string;
+  amount: number;
+  vat_amount: number;
+  period_from: string;
+  period_to: string;
+  issued_at: string;
+  due_at: string;
+  paid_at?: string | null;
+  status: string;
+  description: string;
+  period_label: string;
+  status_label: string;
+  issued_at_label: string;
+  due_at_label: string;
+  paid_at_label?: string | null;
+  period_from_label: string;
+  period_to_label: string;
+}
+
+export interface BillingProvider {
+  legal_name: string;
+  bin: string;
+  address: string;
+  bank: string;
+  bik: string;
+  iik: string;
+  kbe: string;
+  knp: string;
+  phone: string;
+  email: string;
+}
+
+export interface BillingPayload {
+  provider: BillingProvider;
+  tariffs: {
+    monthly: BillingTariff;
+    annual: BillingTariff;
+  };
+  subscription: BillingSubscription;
+  documents: BillingDocument[];
+  message?: string;
+}
+
+export interface BillingOverviewItem {
+  tc_id: number;
+  tc_name: string;
+  tc_bin: string;
+  tc_city: string;
+  contract_number: string;
+  plan: string;
+  plan_label: string;
+  valid_until: string;
+  valid_until_label: string;
+  days_remaining: number;
+  status: string;
+  status_label: string;
+  auto_renew: boolean;
+  current_amount: number;
+}
+
+export interface SuperAdminUser {
+  id: number;
+  login: string;
+  full_name: string;
+  created_at: string;
 }
 
 export interface TrainingCenterItem {
@@ -131,4 +240,13 @@ export interface TrainingCenterItem {
   contact_email: string;
   groups_count?: number;
   certified_count?: number;
+  subscription_plan?: string | null;
+  subscription_valid_until?: string | null;
+  subscription_auto_renew?: number | null;
+  contract_number?: string | null;
+  plan_label?: string | null;
+  valid_until_label?: string | null;
+  subscription_status_label?: string | null;
+  days_remaining?: number | null;
+  active?: number;
 }

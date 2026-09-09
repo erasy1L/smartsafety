@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { m } from '../paraglide/messages.js';
 
 interface UseAntiCheatOptions {
   enabled: boolean;
@@ -12,7 +13,7 @@ export function useAntiCheat({ enabled, onCheatDetected }: UseAntiCheatOptions) 
   const registerViolation = useCallback((reason: string) => {
     setCheatFlags(prev => {
       const next = prev + 1;
-      setLastWarning(`⚠️ Внимание! ${reason} (Замечание №${next})`);
+      setLastWarning(m.cheat_attention({ reason, n: next }));
       if (onCheatDetected) {
         onCheatDetected(reason, next);
       }
@@ -26,13 +27,13 @@ export function useAntiCheat({ enabled, onCheatDetected }: UseAntiCheatOptions) 
     // 1. Блокировка контекстного меню (правый клик мыши)
     const handleContextMenu = (e: MouseEvent) => {
       e.preventDefault();
-      registerViolation('Попытка вызова контекстного меню заблокирована');
+      registerViolation(m.cheat_context());
     };
 
     // 2. Блокировка копирования и вставки
     const handleCopyCutPaste = (e: ClipboardEvent) => {
       e.preventDefault();
-      registerViolation('Копирование и вставка учебных материалов запрещены');
+      registerViolation(m.cheat_clipboard());
     };
 
     // 3. Блокировка системных горячих клавиш (Ctrl+C, Ctrl+V, Ctrl+U, F12 и т.д.)
@@ -47,7 +48,7 @@ export function useAntiCheat({ enabled, onCheatDetected }: UseAntiCheatOptions) 
         (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j' || e.key === 'C' || e.key === 'c'))
       ) {
         e.preventDefault();
-        registerViolation(`Использование горячих клавиш (${e.ctrlKey ? 'Ctrl+' : ''}${e.key}) заблокировано`);
+        registerViolation(m.cheat_hotkeys({ combo: `${e.ctrlKey ? 'Ctrl+' : ''}${e.key}` }));
       }
     };
 
@@ -59,7 +60,7 @@ export function useAntiCheat({ enabled, onCheatDetected }: UseAntiCheatOptions) 
     // 5. Детекция смены вкладки или сворачивания окна
     const handleVisibilityChange = () => {
       if (document.hidden) {
-        registerViolation('Зафиксирована потеря фокуса (переключение вкладки или свертывание браузера)');
+        registerViolation(m.cheat_blur());
       }
     };
 

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { UserCheck, ShieldAlert, Check } from 'lucide-react';
 import { api } from '../api/client';
+import { m } from '../paraglide/messages.js';
 
 interface CadetFioModalProps {
   isOpen: boolean;
@@ -25,7 +26,7 @@ export const CadetFioModal: React.FC<CadetFioModalProps> = ({
     e.preventDefault();
     const cleanFio = fio.trim();
     if (!cleanFio || cleanFio.length < 5 || cleanFio.split(' ').length < 2) {
-      setError('Пожалуйста, укажите фамилию, имя и отчество полностью (минимум 2 слова)');
+      setError(m.fio_invalid());
       return;
     }
 
@@ -35,7 +36,7 @@ export const CadetFioModal: React.FC<CadetFioModalProps> = ({
       const savedFio = await api.setCadetFio(cleanFio);
       onFioSaved(savedFio);
     } catch (err: any) {
-      setError(err.message || 'Ошибка сохранения ФИО. Попробуйте еще раз.');
+      setError(err.message || m.fio_error());
     } finally {
       setLoading(false);
     }
@@ -52,10 +53,10 @@ export const CadetFioModal: React.FC<CadetFioModalProps> = ({
             </div>
             <div>
               <h3 className="text-base font-bold text-white tracking-tight">
-                Персональная идентификация курсанта
+                {m.fio_title()}
               </h3>
               <p className="text-xs text-blue-200">
-                Обязательный шаг перед допуском к экзаменационным материалам
+                {m.fio_sub()}
               </p>
             </div>
           </div>
@@ -65,12 +66,12 @@ export const CadetFioModal: React.FC<CadetFioModalProps> = ({
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
           <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs text-slate-700 space-y-1">
             <div className="flex items-center justify-between">
-              <span className="text-slate-500 font-medium">Учебная группа:</span>
+              <span className="text-slate-500 font-medium">{m.fio_group()}</span>
               <span className="font-semibold text-slate-900">{groupName}</span>
             </div>
             {enterpriseName && (
               <div className="flex items-center justify-between">
-                <span className="text-slate-500 font-medium">Предприятие:</span>
+                <span className="text-slate-500 font-medium">{m.fio_enterprise()}</span>
                 <span className="font-semibold text-slate-900">{enterpriseName}</span>
               </div>
             )}
@@ -78,7 +79,7 @@ export const CadetFioModal: React.FC<CadetFioModalProps> = ({
 
           <div className="space-y-1.5">
             <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700">
-              Введите ваше полное ФИО <span className="text-red-500">*</span>
+              {m.fio_label()} <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -89,11 +90,11 @@ export const CadetFioModal: React.FC<CadetFioModalProps> = ({
                 setFio(e.target.value);
                 if (error) setError(null);
               }}
-              placeholder="Например: Касымов Даурен Маратович"
+              placeholder={m.fio_ph()}
               className="w-full px-3.5 py-2.5 border border-slate-300 rounded-md text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition"
             />
             <p className="text-xs text-slate-500">
-              Указывайте ФИО в точном соответствии с документом, удостоверяющим личность гражданина РК. Данные будут внесены в итоговый протокол проверки знаний.
+              {m.fio_hint()}
             </p>
           </div>
 
@@ -111,18 +112,18 @@ export const CadetFioModal: React.FC<CadetFioModalProps> = ({
               className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white rounded-md text-sm font-semibold transition flex items-center justify-center space-x-2 shadow-sm"
             >
               {loading ? (
-                <span>Сохранение данных...</span>
+                <span>{m.fio_saving()}</span>
               ) : (
                 <>
                   <Check className="w-4 h-4" />
-                  <span>Подтвердить и открыть доступ к курсам</span>
+                  <span>{m.fio_confirm()}</span>
                 </>
               )}
             </button>
           </div>
 
           <p className="text-[11px] text-center text-slate-400 leading-tight">
-            Фиксация цифрового следа и персонификация обучения обязательны.
+            {m.fio_trace()}
           </p>
         </form>
       </div>

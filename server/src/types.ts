@@ -1,4 +1,4 @@
-export type UserRole = 'cadet' | 'tc_admin' | 'super_admin';
+export type UserRole = 'cadet' | 'tc_admin' | 'company_admin' | 'super_admin';
 
 export interface TrainingCenter {
   id: number;
@@ -53,6 +53,8 @@ export interface Course {
   slides_json: string; // JSON Array of CourseSlide
   text_content: string;
   video_url: string;
+  owner_tc_id?: number | null;
+  owner_tc_name?: string | null;
   created_at: string;
   question_count?: number;
 }
@@ -102,5 +104,7 @@ export interface AuthSession {
   tc_name?: string;
   group_id?: number;
   group_name?: string;
+  enterprise_id?: number;
+  enterprise_name?: string;
   cadet_fio?: string; // Captured after first step
 }

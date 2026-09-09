@@ -2,6 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import fs from 'node:fs';
+import { hashUserPassword, isBcryptHash } from '../lib/passwords.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -25,6 +26,7 @@ export function initDatabase() {
       city TEXT NOT NULL,
       contact_phone TEXT NOT NULL,
       contact_email TEXT NOT NULL,
+      active INTEGER DEFAULT 1,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -55,8 +57,9 @@ export function initDatabase() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       login TEXT NOT NULL UNIQUE,
       password TEXT NOT NULL,
-      role TEXT NOT NULL, -- 'tc_admin' | 'super_admin'
+      role TEXT NOT NULL, -- 'tc_admin' | 'company_admin' | 'super_admin'
       tc_id INTEGER,
+      enterprise_id INTEGER,
       full_name TEXT NOT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (tc_id) REFERENCES training_centers(id) ON DELETE SET NULL
@@ -72,7 +75,9 @@ export function initDatabase() {
       slides_json TEXT NOT NULL,
       text_content TEXT NOT NULL,
       video_url TEXT NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      owner_tc_id INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (owner_tc_id) REFERENCES training_centers(id) ON DELETE SET NULL
     );
 
     CREATE TABLE IF NOT EXISTS group_courses (
@@ -121,6 +126,7 @@ export function initDatabase() {
       tc_id INTEGER,
       group_id INTEGER,
       cadet_fio TEXT,
+      enterprise_id INTEGER,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -135,6 +141,40 @@ export function initDatabase() {
       started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       UNIQUE(cadet_fio, group_id, course_id)
     );
+
+    CREATE TABLE IF NOT EXISTS subscriptions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tc_id INTEGER NOT NULL UNIQUE,
+      plan TEXT NOT NULL,
+      valid_from TEXT NOT NULL,
+      valid_until TEXT NOT NULL,
+      auto_renew INTEGER NOT NULL DEFAULT 0,
+      contract_number TEXT NOT NULL,
+      monthly_amount INTEGER NOT NULL,
+      annual_amount INTEGER NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (tc_id) REFERENCES training_centers(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS billing_documents (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tc_id INTEGER NOT NULL,
+      doc_number TEXT NOT NULL UNIQUE,
+      kind TEXT NOT NULL,
+      period TEXT NOT NULL,
+      amount INTEGER NOT NULL,
+      vat_amount INTEGER NOT NULL,
+      period_from TEXT NOT NULL,
+      period_to TEXT NOT NULL,
+      issued_at TEXT NOT NULL,
+      due_at TEXT NOT NULL,
+      paid_at TEXT,
+      status TEXT NOT NULL,
+      description TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (tc_id) REFERENCES training_centers(id) ON DELETE CASCADE
+    );
   `);
 
   try {
@@ -146,8 +186,23 @@ export function initDatabase() {
   try {
     db.exec('ALTER TABLE test_results ADD COLUMN remark TEXT;');
   } catch {}
+  try {
+    db.exec('ALTER TABLE users ADD COLUMN enterprise_id INTEGER;');
+  } catch {}
+  try {
+    db.exec('ALTER TABLE sessions ADD COLUMN enterprise_id INTEGER;');
+  } catch {}
+  try {
+    db.exec('ALTER TABLE courses ADD COLUMN owner_tc_id INTEGER;');
+  } catch {}
+  try {
+    db.exec('ALTER TABLE training_centers ADD COLUMN active INTEGER DEFAULT 1;');
+  } catch {}
 
   seedInitialData();
+  ensureCompanyAdmins();
+  ensureBilling();
+  hashExistingUserPasswords();
 }
 
 
@@ -192,15 +247,29 @@ function seedInitialData() {
 
   // 3. Пользователи-Администраторы
   const insertUser = db.prepare(`
-    INSERT INTO users (login, password, role, tc_id, full_name)
-    VALUES (?, ?, ?, ?, ?)
+    INSERT INTO users (login, password, role, tc_id, enterprise_id, full_name)
+    VALUES (?, ?, ?, ?, ?, ?)
   `);
   // Супер-Админ платформы
-  insertUser.run('superadmin', 'admin2026', 'super_admin', null, 'Главный Администратор SmartSafety РК');
-  // Руководство УЦ 1
-  insertUser.run('admin_qorgau', 'qorgau123', 'tc_admin', 1, 'Ахметов Серик Нурланович (Директор УЦ)');
-  // Руководство УЦ 2
-  insertUser.run('admin_prombez', 'prom123', 'tc_admin', 2, 'Сулейменов Бахытжан Касымович (Руководитель УЦ)');
+  insertUser.run('superadmin', hashUserPassword('admin2026'), 'super_admin', null, null, 'Главный Администратор SmartSafety РК');
+  insertUser.run('admin_qorgau', hashUserPassword('qorgau123'), 'tc_admin', 1, null, 'Ахметов Серик Нурланович (Директор УЦ)');
+  insertUser.run('admin_prombez', hashUserPassword('prom123'), 'tc_admin', 2, null, 'Сулейменов Бахытжан Касымович (Руководитель УЦ)');
+  insertUser.run(
+    'admin_kazmunay',
+    hashUserPassword('company123'),
+    'company_admin',
+    1,
+    1,
+    'Нурланова Алия Сериковна (руководитель ОТ, КазМунайПром)'
+  );
+  insertUser.run(
+    'admin_samruk',
+    hashUserPassword('samruk123'),
+    'company_admin',
+    1,
+    2,
+    'Жумабаев Ерлан Кайратович (начальник ОТ, Самрук-Энерго)'
+  );
 
   // 4. Учебные Группы (курсантские доступы)
   const insertGroup = db.prepare(`
@@ -525,4 +594,140 @@ function seedInitialData() {
   insertResult.run('ПР-2026/09-0024', 'Касымов Даурен Маратович', 3, 3, 2, 1, 1, 100, 1, 0, '2026-09-05 11:00:00');
 
   console.log('✅ Инициализация демонстрационных данных SmartSafety завершена успешно.');
+}
+
+function ensureCompanyAdmins() {
+  const insertAdmin = db.prepare(`
+    INSERT INTO users (login, password, role, tc_id, enterprise_id, full_name)
+    VALUES (?, ?, 'company_admin', ?, ?, ?)
+  `);
+
+  const admins = [
+    {
+      login: 'admin_kazmunay',
+      password: 'company123',
+      nameLike: '%КазМунайПром%',
+      fullName: 'Нурланова Алия Сериковна (руководитель ОТ, КазМунайПром)'
+    },
+    {
+      login: 'admin_samruk',
+      password: 'samruk123',
+      nameLike: '%Самрук-Энерго%',
+      fullName: 'Жумабаев Ерлан Кайратович (начальник ОТ, Самрук-Энерго)'
+    }
+  ];
+
+  for (const admin of admins) {
+    const already = db.prepare(`SELECT 1 FROM users WHERE login = ?`).get(admin.login);
+    if (already) continue;
+
+    const enterprise = db.prepare(`
+      SELECT id, tc_id FROM enterprises WHERE name LIKE ? ORDER BY id ASC LIMIT 1
+    `).get(admin.nameLike) as { id: number; tc_id: number } | undefined;
+    if (!enterprise) continue;
+
+    insertAdmin.run(admin.login, hashUserPassword(admin.password), enterprise.tc_id, enterprise.id, admin.fullName);
+  }
+}
+
+function hashExistingUserPasswords() {
+  const rows = db.prepare('SELECT id, password FROM users').all() as { id: number; password: string }[];
+  const update = db.prepare('UPDATE users SET password = ? WHERE id = ?');
+  for (const row of rows) {
+    if (!isBcryptHash(row.password)) {
+      update.run(hashUserPassword(row.password), row.id);
+    }
+  }
+}
+
+function padContract(tcId: number) {
+  return `Д-SS-${String(tcId).padStart(3, '0')}-2026`;
+}
+
+function ensureBilling() {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS subscriptions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tc_id INTEGER NOT NULL UNIQUE,
+      plan TEXT NOT NULL,
+      valid_from TEXT NOT NULL,
+      valid_until TEXT NOT NULL,
+      auto_renew INTEGER NOT NULL DEFAULT 0,
+      contract_number TEXT NOT NULL,
+      monthly_amount INTEGER NOT NULL,
+      annual_amount INTEGER NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (tc_id) REFERENCES training_centers(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS billing_documents (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tc_id INTEGER NOT NULL,
+      doc_number TEXT NOT NULL UNIQUE,
+      kind TEXT NOT NULL,
+      period TEXT NOT NULL,
+      amount INTEGER NOT NULL,
+      vat_amount INTEGER NOT NULL,
+      period_from TEXT NOT NULL,
+      period_to TEXT NOT NULL,
+      issued_at TEXT NOT NULL,
+      due_at TEXT NOT NULL,
+      paid_at TEXT,
+      status TEXT NOT NULL,
+      description TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (tc_id) REFERENCES training_centers(id) ON DELETE CASCADE
+    );
+  `);
+
+  const MONTHLY = 185000;
+  const ANNUAL = 1776000;
+  const vatOf = (gross: number) => gross - Math.round(gross / 1.12);
+
+  const insertSub = db.prepare(`
+    INSERT INTO subscriptions (
+      tc_id, plan, valid_from, valid_until, auto_renew, contract_number, monthly_amount, annual_amount
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+  const insertDoc = db.prepare(`
+    INSERT INTO billing_documents (
+      tc_id, doc_number, kind, period, amount, vat_amount,
+      period_from, period_to, issued_at, due_at, paid_at, status, description
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  const centers = db.prepare('SELECT id FROM training_centers ORDER BY id ASC').all() as { id: number }[];
+  for (const tc of centers) {
+    const exists = db.prepare('SELECT 1 FROM subscriptions WHERE tc_id = ?').get(tc.id);
+    if (exists) continue;
+
+    if (tc.id === 1) {
+      insertSub.run(1, 'annual', '2026-01-01', '2026-12-31', 1, padContract(1), MONTHLY, ANNUAL);
+      insertDoc.run(
+        1, 'СЧ-2026/01-1001', 'license', 'annual', ANNUAL, vatOf(ANNUAL),
+        '2026-01-01', '2026-12-31', '2026-01-09', '2026-01-19', '2026-01-14', 'paid',
+        'Оплата ежегодной лицензии на использование платформы SmartSafety за 2026 год'
+      );
+    } else if (tc.id === 2) {
+      insertSub.run(2, 'monthly', '2026-09-01', '2026-09-30', 0, padContract(2), MONTHLY, ANNUAL);
+      insertDoc.run(
+        2, 'СЧ-2026/07-1002', 'license', 'monthly', MONTHLY, vatOf(MONTHLY),
+        '2026-07-01', '2026-07-31', '2026-06-20', '2026-06-30', '2026-06-25', 'paid',
+        'Ежемесячная лицензия за июль 2026 г.'
+      );
+      insertDoc.run(
+        2, 'СЧ-2026/08-1003', 'license', 'monthly', MONTHLY, vatOf(MONTHLY),
+        '2026-08-01', '2026-08-31', '2026-07-21', '2026-07-31', '2026-07-28', 'paid',
+        'Ежемесячная лицензия за август 2026 г.'
+      );
+      insertDoc.run(
+        2, 'СЧ-2026/09-1004', 'license', 'monthly', MONTHLY, vatOf(MONTHLY),
+        '2026-09-01', '2026-09-30', '2026-08-20', '2026-08-31', '2026-08-27', 'paid',
+        'Ежемесячная лицензия за сентябрь 2026 г.'
+      );
+    } else {
+      insertSub.run(tc.id, 'annual', '2026-01-01', '2026-12-31', 0, padContract(tc.id), MONTHLY, ANNUAL);
+    }
+  }
 }

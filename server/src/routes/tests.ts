@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { db } from '../db/db.js';
 import { authMiddleware } from '../middleware/auth.js';
+import { canWriteCourse, getCourseById } from '../lib/courseAccess.js';
 
 export const testsRouter = Router();
 
@@ -183,8 +184,9 @@ testsRouter.get('/for-course/:courseId', authMiddleware(), (req: Request, res: R
     }
   }
 
-  // Если супер-админ — возвращаем с правильными ответами для CMS
-  if (session.role === 'super_admin') {
+  // CMS: супер-админ — все курсы; УЦ — только свои программы
+  const course = getCourseById(courseId);
+  if (session.role === 'super_admin' || (session.role === 'tc_admin' && course && canWriteCourse(session, course))) {
     const stmt = db.prepare(`
       SELECT id, course_id, text, options_json, correct_option_index, explanation
       FROM questions
@@ -403,12 +405,31 @@ testsRouter.post('/submit', authMiddleware(['cadet']), (req: Request, res: Respo
   });
 });
 
-// POST /api/tests/questions (Супер-Админ) - Добавление нового вопроса
-testsRouter.post('/questions', authMiddleware(['super_admin']), (req: Request, res: Response) => {
+// POST /api/tests/questions — супер-админ или УЦ для своих курсов
+testsRouter.post('/questions', authMiddleware(['super_admin', 'tc_admin']), (req: Request, res: Response) => {
+  const session = req.session!;
   const { course_id, text, options, correct_option_index, explanation } = req.body;
 
   if (!course_id || !text || !Array.isArray(options) || correct_option_index === undefined) {
     return res.status(400).json({ error: 'Пожалуйста, заполните форму вопроса корректно' });
+  }
+
+  const cleanedOptions = options.map((opt: unknown) => String(opt).trim()).filter(Boolean);
+  if (cleanedOptions.length < 2 || cleanedOptions.length > 4) {
+    return res.status(400).json({ error: 'Вопрос должен содержать от 2 до 4 вариантов ответа' });
+  }
+
+  const correctIndex = Number(correct_option_index);
+  if (!Number.isInteger(correctIndex) || correctIndex < 0 || correctIndex >= cleanedOptions.length) {
+    return res.status(400).json({ error: 'Отметьте один правильный вариант ответа' });
+  }
+
+  const course = getCourseById(Number(course_id));
+  if (!course) {
+    return res.status(404).json({ error: 'Курс не найден' });
+  }
+  if (!canWriteCourse(session, course)) {
+    return res.status(403).json({ error: 'Можно добавлять вопросы только в курсы вашего учебного центра' });
   }
 
   const stmt = db.prepare(`
@@ -417,24 +438,33 @@ testsRouter.post('/questions', authMiddleware(['super_admin']), (req: Request, r
   `);
   const info = stmt.run(
     Number(course_id),
-    text,
-    JSON.stringify(options),
-    Number(correct_option_index),
+    String(text).trim(),
+    JSON.stringify(cleanedOptions),
+    correctIndex,
     explanation || ''
   );
 
   return res.status(201).json({ id: info.lastInsertRowid, message: 'Вопрос успешно добавлен' });
 });
 
-// DELETE /api/tests/questions/:id (Супер-Админ) - Удаление вопроса
-testsRouter.delete('/questions/:id', authMiddleware(['super_admin']), (req: Request, res: Response) => {
+// DELETE /api/tests/questions/:id — супер-админ или УЦ для своих курсов
+testsRouter.delete('/questions/:id', authMiddleware(['super_admin', 'tc_admin']), (req: Request, res: Response) => {
+  const session = req.session!;
   const questionId = Number(req.params.id);
-  const stmt = db.prepare('DELETE FROM questions WHERE id = ?');
-  const info = stmt.run(questionId);
+  const row = db.prepare(`
+    SELECT q.id, c.owner_tc_id
+    FROM questions q
+    JOIN courses c ON c.id = q.course_id
+    WHERE q.id = ?
+  `).get(questionId) as { id: number; owner_tc_id: number | null } | undefined;
 
-  if (info.changes === 0) {
+  if (!row) {
     return res.status(404).json({ error: 'Вопрос не найден' });
   }
+  if (!canWriteCourse(session, row)) {
+    return res.status(403).json({ error: 'Можно удалять вопросы только из курсов вашего учебного центра' });
+  }
 
+  db.prepare('DELETE FROM questions WHERE id = ?').run(questionId);
   return res.json({ message: 'Вопрос удален' });
 });

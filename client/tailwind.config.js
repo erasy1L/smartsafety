@@ -47,7 +47,7 @@ export default {
         "5xl": ["3.25rem", { lineHeight: "1.15" }],
       },
       maxWidth: {
-        app: "90rem",
+        app: "140rem",
       },
     },
   },

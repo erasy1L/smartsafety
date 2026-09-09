@@ -1,4 +1,4 @@
-import { UserSession, Course, Question, TestSubmissionResult, ReportResult, ReportResultsPage, GroupItem, TrainingCenterItem } from '../types';
+import { UserSession, Course, Question, TestSubmissionResult, ReportResult, ReportResultsPage, GroupItem, TrainingCenterItem, BillingPayload, BillingOverviewItem, SuperAdminUser } from '../types';
 
 const API_BASE = '/api';
 
@@ -132,6 +132,22 @@ export const api = {
     return res.json();
   },
 
+  async updateCourse(id: number, courseData: any): Promise<any> {
+    const res = await fetchWithAuth(`/courses/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(courseData)
+    });
+    return res.json();
+  },
+
+  async assignCourseGroups(courseId: number, groupIds: number[]): Promise<any> {
+    const res = await fetchWithAuth(`/courses/${courseId}/groups`, {
+      method: 'PUT',
+      body: JSON.stringify({ group_ids: groupIds })
+    });
+    return res.json();
+  },
+
   async deleteCourse(id: number): Promise<any> {
     const res = await fetchWithAuth(`/courses/${id}`, {
       method: 'DELETE'
@@ -217,6 +233,10 @@ export const api = {
 
   async getReportResults(options: {
     groupId?: number;
+    enterpriseId?: number;
+    courseId?: number;
+    dateFrom?: string;
+    dateTo?: string;
     searchFio?: string;
     passed?: string;
     scoreFrom?: number;
@@ -228,6 +248,10 @@ export const api = {
   } = {}): Promise<ReportResultsPage> {
     const params = new URLSearchParams();
     if (options.groupId) params.set('group_id', String(options.groupId));
+    if (options.enterpriseId) params.set('enterprise_id', String(options.enterpriseId));
+    if (options.courseId) params.set('course_id', String(options.courseId));
+    if (options.dateFrom) params.set('date_from', options.dateFrom);
+    if (options.dateTo) params.set('date_to', options.dateTo);
     if (options.searchFio) params.set('search_fio', options.searchFio);
     if (options.passed !== undefined && options.passed !== '') params.set('passed', options.passed);
     if (options.scoreFrom !== undefined) params.set('score_from', String(options.scoreFrom));
@@ -247,11 +271,29 @@ export const api = {
     return res.json();
   },
 
-  async downloadExcel(groupId?: number): Promise<void> {
+  async downloadExcel(filters: {
+    groupId?: number;
+    enterpriseId?: number;
+    courseId?: number;
+    dateFrom?: string;
+    dateTo?: string;
+    searchFio?: string;
+    passed?: string;
+    scoreFrom?: number;
+    scoreTo?: number;
+  } = {}): Promise<void> {
 
     const token = getToken();
     const params = new URLSearchParams();
-    if (groupId) params.set('group_id', String(groupId));
+    if (filters.groupId) params.set('group_id', String(filters.groupId));
+    if (filters.enterpriseId) params.set('enterprise_id', String(filters.enterpriseId));
+    if (filters.courseId) params.set('course_id', String(filters.courseId));
+    if (filters.dateFrom) params.set('date_from', filters.dateFrom);
+    if (filters.dateTo) params.set('date_to', filters.dateTo);
+    if (filters.searchFio) params.set('search_fio', filters.searchFio);
+    if (filters.passed !== undefined && filters.passed !== '') params.set('passed', filters.passed);
+    if (filters.scoreFrom !== undefined) params.set('score_from', String(filters.scoreFrom));
+    if (filters.scoreTo !== undefined) params.set('score_to', String(filters.scoreTo));
     const query = params.toString() ? `?${params.toString()}` : '';
 
     const res = await fetch(`${API_BASE}/reports/export-excel${query}`, {
@@ -266,7 +308,11 @@ export const api = {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Vedomost_SmartSafety_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    const period =
+      filters.dateFrom || filters.dateTo
+        ? `${filters.dateFrom || 'start'}_${filters.dateTo || 'end'}`
+        : new Date().toISOString().slice(0, 10);
+    a.download = `Vedomost_SmartSafety_${period}.xlsx`;
     document.body.appendChild(a);
     a.click();
     window.URL.revokeObjectURL(url);
@@ -292,6 +338,34 @@ export const api = {
     return res.json();
   },
 
+  async setTrainingCenterActive(id: number, active: boolean): Promise<any> {
+    const res = await fetchWithAuth(`/admin/training-centers/${id}/active`, {
+      method: 'PATCH',
+      body: JSON.stringify({ active })
+    });
+    return res.json();
+  },
+
+  async getSuperAdmins(): Promise<SuperAdminUser[]> {
+    const res = await fetchWithAuth('/admin/super-admins');
+    return res.json();
+  },
+
+  async createSuperAdmin(data: { login: string; password: string; full_name: string }): Promise<any> {
+    const res = await fetchWithAuth('/admin/super-admins', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+    return res.json();
+  },
+
+  async deleteSuperAdmin(id: number): Promise<any> {
+    const res = await fetchWithAuth(`/admin/super-admins/${id}`, {
+      method: 'DELETE'
+    });
+    return res.json();
+  },
+
   async getAdminGroups(): Promise<GroupItem[]> {
     const res = await fetchWithAuth('/admin/groups');
     return res.json();
@@ -305,10 +379,73 @@ export const api = {
     return res.json();
   },
 
+  async getManagedGroups(): Promise<GroupItem[]> {
+    const res = await fetchWithAuth('/groups');
+    return res.json();
+  },
+
+  async getManagedEnterprises(): Promise<{ id: number; name: string; industry: string }[]> {
+    const res = await fetchWithAuth('/groups/enterprises');
+    return res.json();
+  },
+
+  async createManagedGroup(data: any): Promise<any> {
+    const res = await fetchWithAuth('/groups', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+    return res.json();
+  },
+
+  async updateManagedGroupCourses(groupId: number, courseIds: number[]): Promise<any> {
+    const res = await fetchWithAuth(`/groups/${groupId}/courses`, {
+      method: 'PUT',
+      body: JSON.stringify({ course_ids: courseIds })
+    });
+    return res.json();
+  },
+
   async updateGroupCourses(groupId: number, courseIds: number[]): Promise<any> {
     const res = await fetchWithAuth(`/admin/groups/${groupId}/courses`, {
       method: 'PUT',
       body: JSON.stringify({ course_ids: courseIds })
+    });
+    return res.json();
+  },
+
+  async getBilling(tcId?: number): Promise<BillingPayload & { overview?: BillingOverviewItem[] }> {
+    const query = tcId ? `?tc_id=${tcId}` : '';
+    const res = await fetchWithAuth(`/billing${query}`);
+    return res.json();
+  },
+
+  async previewBillingExtension(period: 'monthly' | 'annual', tcId?: number): Promise<{
+    period: string;
+    period_from: string;
+    period_to: string;
+    amount: number;
+    vat: number;
+    period_from_label: string;
+    period_to_label: string;
+  }> {
+    const params = new URLSearchParams({ period });
+    if (tcId) params.set('tc_id', String(tcId));
+    const res = await fetchWithAuth(`/billing/preview?${params.toString()}`);
+    return res.json();
+  },
+
+  async extendBilling(period: 'monthly' | 'annual', tcId?: number): Promise<BillingPayload> {
+    const res = await fetchWithAuth('/billing/extend', {
+      method: 'POST',
+      body: JSON.stringify({ period, tc_id: tcId })
+    });
+    return res.json();
+  },
+
+  async setBillingAutoRenew(enabled: boolean, tcId?: number): Promise<BillingPayload> {
+    const res = await fetchWithAuth('/billing/auto-renew', {
+      method: 'PATCH',
+      body: JSON.stringify({ enabled, tc_id: tcId })
     });
     return res.json();
   },

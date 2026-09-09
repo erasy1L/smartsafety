@@ -11,8 +11,10 @@ import { TcAdminPortal } from './pages/TcAdminPortal';
 import { SuperAdminPortal } from './pages/SuperAdminPortal';
 import { api, getSavedSession } from './api/client';
 import { UserSession } from './types';
+import { useLocale } from './locale';
 
 export const App: React.FC = () => {
+  const { locale } = useLocale();
   const [currentPath, setCurrentPath] = useState<string>(() => {
     return window.location.pathname || '/';
   });
@@ -49,6 +51,8 @@ export const App: React.FC = () => {
       navigate('/portal/cadet');
     } else if (session.role === 'tc_admin') {
       navigate('/portal/tc-admin');
+    } else if (session.role === 'company_admin') {
+      navigate('/portal/company');
     } else if (session.role === 'super_admin') {
       navigate('/portal/super-admin');
     } else {
@@ -101,6 +105,24 @@ export const App: React.FC = () => {
       );
     }
 
+    // 2b. Portal Company Admin
+    if (currentPath === '/portal/company') {
+      if (!user || user.role !== 'company_admin') {
+        return (
+          <LoginPage
+            onLoginSuccess={handleLoginSuccess}
+            onNavigate={navigate}
+          />
+        );
+      }
+      return (
+        <TcAdminPortal
+          user={user}
+          onNavigate={navigate}
+        />
+      );
+    }
+
     // 3. Portal Super Admin
     if (currentPath === '/portal/super-admin') {
       if (!user || user.role !== 'super_admin') {
@@ -124,6 +146,7 @@ export const App: React.FC = () => {
       if (user) {
         if (user.role === 'cadet') return <CadetPortal user={user} onUpdateUser={setUser} onNavigate={navigate} />;
         if (user.role === 'tc_admin') return <TcAdminPortal user={user} onNavigate={navigate} />;
+        if (user.role === 'company_admin') return <TcAdminPortal user={user} onNavigate={navigate} />;
         if (user.role === 'super_admin') return <SuperAdminPortal user={user} onNavigate={navigate} />;
       }
       return (
@@ -161,7 +184,7 @@ export const App: React.FC = () => {
   const isPortalView = currentPath.startsWith('/portal/') && currentPath !== '/portal/login';
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 selection:bg-blue-900 selection:text-white">
+    <div key={locale} className="min-h-screen flex flex-col bg-slate-50 text-slate-900 selection:bg-blue-900 selection:text-white">
       {/* Top Header Navigation */}
       <Header
         currentPath={currentPath}

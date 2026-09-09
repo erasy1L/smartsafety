@@ -1,5 +1,6 @@
 import React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { m } from '../paraglide/messages.js';
 
 export const PAGE_SIZE_OPTIONS = [5, 10, 20, 50] as const;
 export const DEFAULT_PAGE_SIZE = 10;
@@ -29,7 +30,7 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
   return (
     <div className="flex items-center justify-end flex-wrap gap-3 text-xs text-slate-600">
       <label className="flex items-center gap-2">
-        <span className="whitespace-nowrap">На странице</span>
+        <span className="whitespace-nowrap">{m.pager_per_page()}</span>
         <select
           value={pageSize}
           onChange={e => onPageSizeChange(Number(e.target.value))}
@@ -42,7 +43,7 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
       </label>
 
       <span className="tabular-nums whitespace-nowrap">
-        {from}–{to} из {total}
+        {m.pager_range({ from, to, total })}
       </span>
 
       <div className="flex items-center gap-1">
@@ -51,7 +52,7 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
           disabled={currentPage <= 1}
           onClick={() => onPageChange(currentPage - 1)}
           className="p-1.5 border border-slate-300 rounded bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
-          aria-label="Предыдущая страница"
+          aria-label={m.pager_prev()}
         >
           <ChevronLeft className="w-4 h-4" />
         </button>
@@ -63,7 +64,7 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
           disabled={currentPage >= pageCount}
           onClick={() => onPageChange(currentPage + 1)}
           className="p-1.5 border border-slate-300 rounded bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
-          aria-label="Следующая страница"
+          aria-label={m.pager_next()}
         >
           <ChevronRight className="w-4 h-4" />
         </button>

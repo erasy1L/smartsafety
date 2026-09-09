@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Shield, Lock, User, AlertCircle, ArrowRight, CheckCircle2, Building, ShieldAlert } from 'lucide-react';
+import { Shield, Lock, User, AlertCircle, ArrowRight } from 'lucide-react';
 import { api } from '../api/client';
 import { UserSession } from '../types';
+import { m } from '../paraglide/messages.js';
 
 interface LoginPageProps {
   onLoginSuccess: (session: UserSession) => void;
@@ -17,7 +18,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onNavigate
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!login.trim() || !password.trim()) {
-      setError('Пожалуйста, укажите логин и пароль для входа');
+      setError(m.login_required());
       return;
     }
 
@@ -27,7 +28,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onNavigate
       const session = await api.login(login.trim(), password.trim());
       onLoginSuccess(session);
     } catch (err: any) {
-      setError(err.message || 'Ошибка авторизации. Проверьте правильность логина и пароля');
+      setError(err.message || m.login_auth_error());
     } finally {
       setLoading(false);
     }
@@ -57,10 +58,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onNavigate
           <Shield className="w-7 h-7" />
         </div>
         <h1 className="text-2xl font-bold tracking-tight text-white">
-          Вход в закрытый портал SmartSafety
+          {m.login_title()}
         </h1>
         <p className="text-xs text-slate-400">
-          Единая точка доступа для курсантов, администраторов УЦ и супер-администраторов
+          {m.login_sub()}
         </p>
       </div>
 
@@ -70,15 +71,15 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onNavigate
           <div className="p-3 bg-slate-950/80 border border-slate-800 rounded-lg text-xs text-slate-400 flex items-start space-x-2.5">
             <AlertCircle className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
             <div className="leading-relaxed">
-              <span className="font-semibold text-slate-300 block">Регистрации нет:</span>
-              Доступы выдаются индивидуально учебным центром или куратором предприятия.
+              <span className="font-semibold text-slate-300 block">{m.login_no_reg()}</span>
+              {m.login_no_reg_text()}
             </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1">
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300">
-                Логин <span className="text-slate-500">(или групповой логин)</span>
+                {m.login_login()} <span className="text-slate-500">{m.login_login_hint()}</span>
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
@@ -98,7 +99,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onNavigate
 
             <div className="space-y-1">
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300">
-                Пароль доступа
+                {m.login_password()}
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
@@ -128,10 +129,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onNavigate
               className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 text-white rounded-md text-sm font-bold uppercase tracking-wider transition flex items-center justify-center space-x-2 shadow-sm"
             >
               {loading ? (
-                <span>Проверка учетных данных...</span>
+                <span>{m.login_checking()}</span>
               ) : (
                 <>
-                  <span>Войти в систему</span>
+                  <span>{m.login_enter()}</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </>
               )}
@@ -142,7 +143,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onNavigate
           <div className="pt-6 border-t border-slate-800 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                Быстрый вход для проверки (1 клик):
+                {m.login_quick()}
               </span>
               <span className="text-[11px] text-blue-400 bg-blue-950 px-1.5 py-0.5 rounded border border-blue-900">
                 Demo
@@ -162,10 +163,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onNavigate
                   </div>
                   <div>
                     <span className="font-semibold text-slate-200 block group-hover:text-blue-300">
-                      УРОВЕНЬ 1: Курсант (БиОТ)
+                      {m.login_level1()}
                     </span>
                     <span className="text-[11px] text-slate-500">
-                      Логин: <code className="text-slate-400">kursant_biot</code> • Группа КазМунайПром
+                      {m.login_level1_sub({ login: 'kursant_biot' })}
                     </span>
                   </div>
                 </div>
@@ -184,14 +185,57 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onNavigate
                   </div>
                   <div>
                     <span className="font-semibold text-slate-200 block group-hover:text-emerald-300">
-                      УРОВЕНЬ 2: Администратор УЦ
+                      {m.login_level2()}
                     </span>
                     <span className="text-[11px] text-slate-500">
-                      Логин: <code className="text-slate-400">admin_qorgau</code> • УЦ «Қорғау-Сапа»
+                      {m.login_level2_sub({ login: 'admin_qorgau' })}
                     </span>
                   </div>
                 </div>
                 <ArrowRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-emerald-400" />
+              </button>
+
+              {/* Company Admin */}
+              <button
+                type="button"
+                onClick={() => handleQuickDemo('admin_kazmunay', 'company123')}
+                className="p-2.5 bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 rounded-lg text-sm flex items-center justify-between transition group"
+              >
+                <div className="flex items-center space-x-2.5">
+                  <div className="w-6 h-6 rounded bg-indigo-900/60 text-indigo-400 flex items-center justify-center text-xs font-bold">
+                    3
+                  </div>
+                  <div>
+                    <span className="font-semibold text-slate-200 block group-hover:text-indigo-300">
+                      {m.login_level3()}
+                    </span>
+                    <span className="text-[11px] text-slate-500">
+                      {m.login_level3_kaz({ login: 'admin_kazmunay' })}
+                    </span>
+                  </div>
+                </div>
+                <ArrowRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-indigo-400" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleQuickDemo('admin_samruk', 'samruk123')}
+                className="p-2.5 bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 rounded-lg text-sm flex items-center justify-between transition group"
+              >
+                <div className="flex items-center space-x-2.5">
+                  <div className="w-6 h-6 rounded bg-indigo-900/60 text-indigo-400 flex items-center justify-center text-xs font-bold">
+                    3
+                  </div>
+                  <div>
+                    <span className="font-semibold text-slate-200 block group-hover:text-indigo-300">
+                      {m.login_level3()}
+                    </span>
+                    <span className="text-[11px] text-slate-500">
+                      {m.login_level3_samruk({ login: 'admin_samruk' })}
+                    </span>
+                  </div>
+                </div>
+                <ArrowRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-indigo-400" />
               </button>
 
               {/* Super Admin */}
@@ -202,14 +246,14 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onNavigate
               >
                 <div className="flex items-center space-x-2.5">
                   <div className="w-6 h-6 rounded bg-amber-900/60 text-amber-400 flex items-center justify-center text-xs font-bold">
-                    3
+                    4
                   </div>
                   <div>
                     <span className="font-semibold text-slate-200 block group-hover:text-amber-300">
-                      УРОВЕНЬ 3: Супер-Админ (CMS)
+                      {m.login_level4()}
                     </span>
                     <span className="text-[11px] text-slate-500">
-                      Логин: <code className="text-slate-400">superadmin</code> • Полное управление
+                      {m.login_level4_sub({ login: 'superadmin' })}
                     </span>
                   </div>
                 </div>
@@ -224,7 +268,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onNavigate
             onClick={() => onNavigate('/')}
             className="text-sm text-slate-400 hover:text-white transition"
           >
-            ← Вернуться на публичный сайт
+            {m.login_back()}
           </button>
         </div>
       </div>

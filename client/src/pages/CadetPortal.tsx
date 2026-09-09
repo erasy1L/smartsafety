@@ -23,6 +23,7 @@ import { PresentationViewer } from '../components/PresentationViewer';
 import { CadetFioModal } from '../components/CadetFioModal';
 import { QuestionPagination } from '../components/QuestionPagination';
 import { useAntiCheat } from '../hooks/useAntiCheat';
+import { m } from '../paraglide/messages.js';
 
 interface CadetPortalProps {
   user: UserSession;
@@ -63,7 +64,7 @@ export const CadetPortal: React.FC<CadetPortalProps> = ({ user, onUpdateUser }) 
       const data = await api.getCourses();
       setCourses(data);
     } catch (err: any) {
-      setError(err.message || 'Ошибка загрузки курсов');
+      setError(err.message || m.common_error());
     } finally {
       setLoading(false);
     }
@@ -182,7 +183,7 @@ export const CadetPortal: React.FC<CadetPortalProps> = ({ user, onUpdateUser }) 
       const result = await api.submitTest(activeCourse.id, selectedAnswers, cheatFlags);
       setTestResult(result);
     } catch (err: any) {
-      setError(err.message || 'Ошибка отправки результатов теста');
+      setError(err.message || m.common_error());
     } finally {
       setTestSubmitting(false);
     }
@@ -220,16 +221,16 @@ export const CadetPortal: React.FC<CadetPortalProps> = ({ user, onUpdateUser }) 
               <div>
                 <div className="flex items-center space-x-2">
                   <span className="font-bold text-sm text-white">
-                    {user.cadet_fio || 'Ожидание ввода ФИО'}
+                    {user.cadet_fio || m.fio_label()}
                   </span>
                   <span className="text-[11px] bg-emerald-950 text-emerald-300 border border-emerald-800 px-1.5 py-0.2 rounded">
-                    Курсант
+                    {m.header_cadet_fallback({ login: user.login })}
                   </span>
                 </div>
                 <div className="text-slate-400 flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
-                  <span>Группа: <strong className="text-slate-200">{user.group_name}</strong></span>
+                  <span>{m.cadet_group()} <strong className="text-slate-200">{user.group_name}</strong></span>
                   {user.enterprise_name && (
-                    <span>Предприятие: <strong className="text-slate-200">{user.enterprise_name}</strong></span>
+                    <span>{m.cadet_enterprise()} <strong className="text-slate-200">{user.enterprise_name}</strong></span>
                   )}
                 </div>
               </div>
@@ -237,7 +238,7 @@ export const CadetPortal: React.FC<CadetPortalProps> = ({ user, onUpdateUser }) 
 
             <div className="flex items-center space-x-2 text-slate-400">
               <Building className="w-4 h-4 text-slate-500" />
-              <span>Аттестующий УЦ: <strong className="text-slate-200">{user.tc_name}</strong></span>
+              <span>{m.cadet_tc()} <strong className="text-slate-200">{user.tc_name}</strong></span>
             </div>
           </div>
         </div>
@@ -250,15 +251,15 @@ export const CadetPortal: React.FC<CadetPortalProps> = ({ user, onUpdateUser }) 
             <div className="flex items-center space-x-2 max-w-4xl truncate">
               <ShieldCheck className="w-4 h-4 text-white shrink-0" />
               <span className="truncate">
-                Режим контроля тестирования активен. Копирование текста заблокировано.
+                {m.cheat_clipboard()}
               </span>
             </div>
             {cheatFlags > 0 ? (
               <span className="bg-red-900/80 text-red-200 px-2 py-0.5 rounded text-xs font-bold border border-red-700 animate-pulse">
-                Замечания прокторинга: {cheatFlags}
+                {m.cadet_violations({ n: cheatFlags })}
               </span>
             ) : (
-              <span className="text-emerald-400 text-xs">Без нарушений</span>
+              <span className="text-emerald-400 text-xs">{m.cadet_clean()}</span>
             )}
           </div>
         </div>
@@ -271,7 +272,7 @@ export const CadetPortal: React.FC<CadetPortalProps> = ({ user, onUpdateUser }) 
           <div className="flex-1">
             <p className="font-semibold">{lastWarning}</p>
             <p className="text-[11px] text-red-200 mt-0.5">
-              Сведения будут занесены в экзаменационную ведомость учебного центра.
+              {m.cadet_protocol()}
             </p>
           </div>
           <button onClick={clearWarning} className="text-red-300 hover:text-white p-0.5">
@@ -287,16 +288,16 @@ export const CadetPortal: React.FC<CadetPortalProps> = ({ user, onUpdateUser }) 
           <div className="space-y-6">
             <div>
               <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-                Учебные курсы вашей группы
+                {m.cadet_my_courses()}
               </h1>
               <p className="text-xs sm:text-sm text-slate-500 mt-1">
-                Вам открыты только курсы, строго закрепленные за учебной группой <b>{user.group_name}</b>.
+                {m.cadet_group_label()} <b>{user.group_name}</b>
               </p>
             </div>
 
             {loading ? (
               <div className="p-12 text-center text-slate-500 bg-white rounded-xl border border-slate-200">
-                Загрузка учебных материалов...
+                {m.common_loading()}
               </div>
             ) : error ? (
               <div className="p-4 bg-red-50 text-red-700 border border-red-200 rounded-lg text-xs">
@@ -305,8 +306,8 @@ export const CadetPortal: React.FC<CadetPortalProps> = ({ user, onUpdateUser }) 
             ) : courses.length === 0 ? (
               <div className="p-12 text-center text-slate-500 bg-white rounded-xl border border-slate-200 space-y-2">
                 <BookOpen className="w-8 h-8 text-slate-400 mx-auto" />
-                <p className="font-medium text-sm">В данной группе пока нет назначенных курсов.</p>
-                <p className="text-xs text-slate-400">Обратитесь к куратору учебного центра {user.tc_name}.</p>
+                <p className="font-medium text-sm">{m.cadet_no_courses()}</p>
+                <p className="text-xs text-slate-400">{m.cadet_ask_curator({ tc: user.tc_name || '' })}</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -336,11 +337,11 @@ export const CadetPortal: React.FC<CadetPortalProps> = ({ user, onUpdateUser }) 
                       <div className="pt-2 flex items-center space-x-4 text-xs text-slate-500 border-t border-slate-100">
                         <span className="flex items-center space-x-1">
                           <Clock className="w-3.5 h-3.5 text-slate-400" />
-                          <span>{course.duration_hours} ак. часов</span>
+                          <span>{course.duration_hours} {m.common_hours_short()}</span>
                         </span>
                         <span className="flex items-center space-x-1">
                           <HelpCircle className="w-3.5 h-3.5 text-slate-400" />
-                          <span>{course.question_count || 6} вопросов</span>
+                          <span>{course.question_count || 6} {m.common_questions()}</span>
                         </span>
                       </div>
                     </div>
@@ -350,7 +351,7 @@ export const CadetPortal: React.FC<CadetPortalProps> = ({ user, onUpdateUser }) 
                         onClick={() => handleSelectCourse(course.id)}
                         className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded text-sm font-semibold uppercase tracking-wider transition flex items-center justify-center space-x-2"
                       >
-                        <span>Начать изучение и тест</span>
+                        <span>{m.cadet_start()}</span>
                         <ArrowRight className="w-3.5 h-3.5" />
                       </button>
                     </div>
@@ -369,24 +370,24 @@ export const CadetPortal: React.FC<CadetPortalProps> = ({ user, onUpdateUser }) 
                   onClick={handleLeaveCourse}
                   className="text-sm text-blue-600 hover:underline flex items-center space-x-1 mb-1"
                 >
-                  <span>← Назад к списку курсов группы</span>
+                  <span>{m.common_back()}</span>
                 </button>
                 <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
                   {activeCourse.title}
                 </h1>
                 <p className="text-xs text-slate-500">
-                  Нормативный стандарт: {activeCourse.code} • Программа {activeCourse.duration_hours} ч.
+                  {m.cadet_program()} {activeCourse.code} • {activeCourse.duration_hours} {m.common_hours_short()}
                 </p>
               </div>
 
               {/* Quick test jump button */}
               {activeTab !== 'test' && (
                 <button
-                  onClick={handleStartTest}
+                  onClick={() => handleStartTest()}
                   className="px-5 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-bold uppercase tracking-wider transition shadow-sm flex items-center space-x-2 self-start sm:self-auto"
                 >
                   <CheckCircle2 className="w-4 h-4" />
-                  <span>Перейти к тестированию</span>
+                  <span>{m.cadet_go_test()}</span>
                 </button>
               )}
             </div>
@@ -406,7 +407,7 @@ export const CadetPortal: React.FC<CadetPortalProps> = ({ user, onUpdateUser }) 
                 }`}
               >
                 <FileText className="w-4 h-4" />
-                <span>1. Нормативный конспект</span>
+                <span>{m.cadet_tab_notes()}</span>
               </button>
 
               <button
@@ -422,7 +423,7 @@ export const CadetPortal: React.FC<CadetPortalProps> = ({ user, onUpdateUser }) 
                 }`}
               >
                 <BookOpen className="w-4 h-4" />
-                <span>2. Учебная презентация</span>
+                <span>{m.cadet_tab_slides()}</span>
               </button>
 
               <button
@@ -438,7 +439,7 @@ export const CadetPortal: React.FC<CadetPortalProps> = ({ user, onUpdateUser }) 
                 }`}
               >
                 <Play className="w-4 h-4" />
-                <span>3. Видео-лекция</span>
+                <span>{m.cadet_tab_video()}</span>
               </button>
 
               <button
@@ -454,7 +455,7 @@ export const CadetPortal: React.FC<CadetPortalProps> = ({ user, onUpdateUser }) 
                 }`}
               >
                 <CheckCircle2 className="w-4 h-4" />
-                <span>4. Экзаменационный тест</span>
+                <span>{m.cadet_go_test()}</span>
               </button>
             </div>
 
@@ -473,12 +474,12 @@ export const CadetPortal: React.FC<CadetPortalProps> = ({ user, onUpdateUser }) 
               <div className="bg-white p-6 sm:p-8 rounded-xl border border-slate-200 shadow-sm space-y-4 select-none anti-cheat-protected">
                 <div className="border-b border-slate-200 pb-3 flex items-center justify-between">
                   <h3 className="text-base font-bold text-slate-900">
-                    Конспект и нормативные акты РК
+                    {m.cadet_tab_notes()}
                   </h3>
-                  <span className="text-xs text-slate-400">Копирование защищено</span>
+                  <span className="text-xs text-slate-400">{m.cadet_copy_protected()}</span>
                 </div>
                 <div className="prose prose-slate max-w-none text-xs sm:text-sm leading-relaxed whitespace-pre-line text-slate-700">
-                  {activeCourse.text_content || 'Текстовый конспект курса формируется.'}
+                  {activeCourse.text_content || m.common_loading()}
                 </div>
               </div>
             )}
@@ -487,19 +488,19 @@ export const CadetPortal: React.FC<CadetPortalProps> = ({ user, onUpdateUser }) 
             {activeTab === 'video' && (
               <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
                 <h3 className="text-base font-bold text-slate-900">
-                  Видеоматериалы
+                  {m.cadet_tab_video()}
                 </h3>
                 <div className="aspect-video w-full bg-slate-900 rounded-lg overflow-hidden flex items-center justify-center text-white">
                   {activeCourse.video_url ? (
                     <iframe
                       src={activeCourse.video_url}
-                      title="Видео-лекция"
+                      title={m.cadet_tab_video()}
                       className="w-full h-full"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                       allowFullScreen
                     />
                   ) : (
-                    <p className="text-xs text-slate-400">Видеоматериал загружается</p>
+                    <p className="text-xs text-slate-400">{m.cadet_video_loading()}</p>
                   )}
                 </div>
               </div>
@@ -529,21 +530,21 @@ export const CadetPortal: React.FC<CadetPortalProps> = ({ user, onUpdateUser }) 
                         </div>
                         <div>
                           <span className="text-xs font-bold uppercase tracking-wider block opacity-75">
-                            Итоговый результат
+                            {m.cadet_score({ score: testResult.score, max: testResult.max_score, pct: testResult.percentage })}
                           </span>
                           <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight">
                             {testResult.passed
-                              ? 'ЭКЗАМЕН УСПЕШНО СДАН'
+                              ? m.cadet_passed()
                               : testResult.aborted
-                                ? 'ТЕСТ АННУЛИРОВАН'
-                                : 'ТЕСТ НЕ ПРОЙДЕН'}
+                                ? m.cadet_failed()
+                                : m.cadet_failed()}
                           </h2>
                           <p className="text-xs mt-0.5">
                             {testResult.passed
-                              ? 'Квалификация подтверждена.'
+                              ? m.cadet_passed()
                               : testResult.remark
                                 ? testResult.remark
-                                : 'Набрано менее 80% правильных ответов. Требуется повторное изучение материала.'}
+                                : m.cadet_failed()}
                           </p>
                         </div>
                       </div>
@@ -553,7 +554,7 @@ export const CadetPortal: React.FC<CadetPortalProps> = ({ user, onUpdateUser }) 
                           {testResult.score} / {testResult.max_score}
                         </div>
                         <div className="text-xs font-semibold">
-                          {testResult.percentage}% правильных ответов
+                          {m.cadet_score({ score: testResult.score, max: testResult.max_score, pct: testResult.percentage })}
                         </div>
                       </div>
                     </div>
@@ -564,7 +565,7 @@ export const CadetPortal: React.FC<CadetPortalProps> = ({ user, onUpdateUser }) 
                         <div className="flex items-center space-x-2">
                           <ShieldCheck className="w-4 h-4 text-slate-900" />
                           <span className="font-bold text-slate-900 text-sm">
-                            Электронный протокол проверки знаний
+                            {m.cadet_protocol()}
                           </span>
                         </div>
                         <span className="font-mono font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded border border-blue-200">
@@ -574,35 +575,35 @@ export const CadetPortal: React.FC<CadetPortalProps> = ({ user, onUpdateUser }) 
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                         <div>
-                          <span className="text-slate-400 block">ФИО Курсанта:</span>
+                          <span className="text-slate-400 block">{m.cadet_fio_label()}</span>
                           <span className="font-bold text-slate-900">{testResult.cadet_fio}</span>
                         </div>
                         <div>
-                          <span className="text-slate-400 block">Учебный Центр:</span>
+                          <span className="text-slate-400 block">{m.cadet_tc_label()}</span>
                           <span className="font-semibold text-slate-900">{user.tc_name}</span>
                         </div>
                         <div>
-                          <span className="text-slate-400 block">Учебная группа:</span>
+                          <span className="text-slate-400 block">{m.cadet_group_label()}</span>
                           <span className="font-semibold text-slate-900">{user.group_name}</span>
                         </div>
                         <div>
-                          <span className="text-slate-400 block">Программа:</span>
+                          <span className="text-slate-400 block">{m.cadet_program()}</span>
                           <span className="font-semibold text-slate-900">{testResult.course_title}</span>
                         </div>
                         <div>
-                          <span className="text-slate-400 block">Дата и время фиксации:</span>
+                          <span className="text-slate-400 block">{m.cadet_datetime()}</span>
                           <span className="font-mono text-slate-900">
                             {new Date(testResult.completed_at).toLocaleString('ru-RU')}
                           </span>
                         </div>
                         <div>
-                          <span className="text-slate-400 block">Замечания античита:</span>
+                          <span className="text-slate-400 block">{m.cadet_remarks()}</span>
                           <span className={testResult.remark || testResult.cheat_flags > 0 ? 'text-red-600 font-bold' : 'text-emerald-700'}>
                             {testResult.remark
                               ? testResult.remark
                               : testResult.cheat_flags > 0
-                                ? `Потеря фокуса (${testResult.cheat_flags})`
-                                : 'Нарушений не зафиксировано'}
+                                ? m.cadet_violations({ n: testResult.cheat_flags })
+                                : m.cadet_no_remarks()}
                           </span>
                         </div>
                       </div>
@@ -613,14 +614,14 @@ export const CadetPortal: React.FC<CadetPortalProps> = ({ user, onUpdateUser }) 
                           className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded text-sm font-semibold flex items-center space-x-2 transition"
                         >
                           <Printer className="w-4 h-4" />
-                          <span>Распечатать цифровой протокол</span>
+                          <span>{m.cadet_print()}</span>
                         </button>
                         <button
                           onClick={() => handleStartTest({ forceNew: true })}
                           className="px-4 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded text-sm font-semibold flex items-center space-x-2 transition"
                         >
                           <RotateCcw className="w-4 h-4" />
-                          <span>Пройти тест повторно</span>
+                          <span>{m.cadet_retry()}</span>
                         </button>
                       </div>
                     </div>
@@ -629,7 +630,7 @@ export const CadetPortal: React.FC<CadetPortalProps> = ({ user, onUpdateUser }) 
                     {testResult.review && testResult.review.length > 0 && (
                       <div className="space-y-3 pt-4">
                         <h4 className="font-bold text-sm text-slate-900">
-                          Подробный разбор ответов:
+                          {m.cadet_review()}:
                         </h4>
                         <div className="space-y-3">
                           {testResult.review.map((item, idx) => (
@@ -643,7 +644,7 @@ export const CadetPortal: React.FC<CadetPortalProps> = ({ user, onUpdateUser }) 
                             >
                               <div className="flex items-start justify-between gap-2">
                                 <span className="font-bold text-slate-900">
-                                  Вопрос {idx + 1}: {item.text}
+                                  {m.cms_question_n({ n: idx + 1, text: item.text })}
                                 </span>
                                 <span
                                   className={`px-2 py-0.5 rounded text-[11px] font-bold ${
@@ -652,7 +653,7 @@ export const CadetPortal: React.FC<CadetPortalProps> = ({ user, onUpdateUser }) 
                                       : 'bg-red-200 text-red-800'
                                   }`}
                                 >
-                                  {item.is_correct ? 'Правильно' : 'Ошибка'}
+                                  {item.is_correct ? m.cadet_correct() : m.cadet_incorrect()}
                                 </span>
                               </div>
 
@@ -676,7 +677,7 @@ export const CadetPortal: React.FC<CadetPortalProps> = ({ user, onUpdateUser }) 
 
                               {item.explanation && (
                                 <p className="text-xs text-slate-500 italic pt-1">
-                                  Обоснование: {item.explanation}
+                                  {m.cadet_explanation()} {item.explanation}
                                 </p>
                               )}
                             </div>
@@ -687,7 +688,7 @@ export const CadetPortal: React.FC<CadetPortalProps> = ({ user, onUpdateUser }) 
                   </div>
                 ) : questions.length === 0 ? (
                   <div className="p-12 text-center text-slate-500 bg-white rounded-xl border border-slate-200">
-                    Загрузка вопросов теста...
+                    {m.common_loading()}
                   </div>
                 ) : (
                   /* ACTIVE TEST IN PROGRESS */
@@ -695,7 +696,7 @@ export const CadetPortal: React.FC<CadetPortalProps> = ({ user, onUpdateUser }) 
                     {/* Test top bar */}
                     <div className="flex items-center justify-between border-b border-slate-200 pb-4 text-xs">
                       <div>
-                        <span className="text-slate-400 block text-xs">Тестируемый курсант:</span>
+                        <span className="text-slate-400 block text-xs">{m.cadet_tested()}</span>
                         <span className="font-bold text-slate-900">{user.cadet_fio}</span>
                       </div>
                       <div className="flex items-center space-x-4">
@@ -709,9 +710,9 @@ export const CadetPortal: React.FC<CadetPortalProps> = ({ user, onUpdateUser }) 
                     {/* Progress bar */}
                     <div className="space-y-1.5">
                       <div className="flex justify-between text-xs text-slate-500">
-                        <span>Вопрос {currentQuestionIndex + 1} из {questions.length}</span>
+                        <span>{m.cadet_q_of({ current: currentQuestionIndex + 1, total: questions.length })}</span>
                         <span>
-                          Отвечено {Object.keys(selectedAnswers).length} из {questions.length}
+                          {Object.keys(selectedAnswers).length} / {questions.length}
                         </span>
                       </div>
                       <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
@@ -773,7 +774,7 @@ export const CadetPortal: React.FC<CadetPortalProps> = ({ user, onUpdateUser }) 
                         disabled={currentQuestionIndex === 0}
                         className="px-4 py-2 border border-slate-300 rounded text-sm font-semibold text-slate-700 disabled:opacity-40 hover:bg-slate-50 transition shrink-0"
                       >
-                        ← Предыдущий вопрос
+                        {m.common_back()}
                       </button>
 
                       <QuestionPagination
@@ -787,7 +788,7 @@ export const CadetPortal: React.FC<CadetPortalProps> = ({ user, onUpdateUser }) 
                           onClick={() => setCurrentQuestionIndex(prev => prev + 1)}
                           className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded text-sm font-semibold transition flex items-center space-x-1.5 shrink-0"
                         >
-                          <span>Следующий вопрос</span>
+                          <span>{m.cadet_next()}</span>
                           <ChevronRight className="w-4 h-4" />
                         </button>
                       ) : (
@@ -797,7 +798,7 @@ export const CadetPortal: React.FC<CadetPortalProps> = ({ user, onUpdateUser }) 
                           className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-400 text-white rounded text-sm font-bold uppercase tracking-wider transition shadow-sm flex items-center space-x-2 shrink-0"
                         >
                           <CheckCircle2 className="w-4 h-4" />
-                          <span>{testSubmitting ? 'Проверка...' : 'Завершить экзамен'}</span>
+                          <span>{testSubmitting ? m.common_loading() : m.cadet_submit()}</span>
                         </button>
                       )}
                     </div>

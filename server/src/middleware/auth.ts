@@ -19,10 +19,11 @@ export function authMiddleware(requiredRoles?: UserRole[]) {
 
     const token = authHeader.split(' ')[1];
     const stmt = db.prepare(`
-      SELECT s.*, tc.name as tc_name, g.name as group_name
+      SELECT s.*, tc.name as tc_name, g.name as group_name, e.name as enterprise_name
       FROM sessions s
       LEFT JOIN training_centers tc ON s.tc_id = tc.id
       LEFT JOIN groups g ON s.group_id = g.id
+      LEFT JOIN enterprises e ON s.enterprise_id = e.id
       WHERE s.token = ?
     `);
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CourseSlide } from '../types';
 import { ChevronLeft, ChevronRight, BookOpen, AlertTriangle, Maximize2, Minimize2 } from 'lucide-react';
+import { m } from '../paraglide/messages.js';
 
 interface PresentationViewerProps {
   slides: CourseSlide[];
@@ -14,7 +15,7 @@ export const PresentationViewer: React.FC<PresentationViewerProps> = ({ slides, 
   if (!slides || slides.length === 0) {
     return (
       <div className="p-12 text-center text-slate-500 bg-white rounded-lg border border-slate-200">
-        Учебная презентация для данного курса находится в процессе актуализации методическим отделом.
+        {m.slides_empty()}
       </div>
     );
   }
@@ -55,7 +56,7 @@ export const PresentationViewer: React.FC<PresentationViewerProps> = ({ slides, 
       {/* Top Slide Bar */}
       <div className="bg-slate-900 text-white px-4 py-3 flex items-center justify-between text-xs border-b border-slate-800">
         <div className="flex items-center space-x-2 truncate">
-          <span className="font-semibold text-blue-400">Презентация:</span>
+          <span className="font-semibold text-blue-400">{m.slides_label()}</span>
           <span className="text-slate-300 truncate font-medium">{courseTitle}</span>
         </div>
         <div className="flex items-center space-x-3 shrink-0">
@@ -64,7 +65,7 @@ export const PresentationViewer: React.FC<PresentationViewerProps> = ({ slides, 
           </span>
           <button
             onClick={() => setIsFullscreen(!isFullscreen)}
-            title={isFullscreen ? 'Свернуть' : 'Во весь экран'}
+            title={isFullscreen ? m.slides_exit_fs() : m.slides_fullscreen()}
             className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800 transition"
           >
             {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
@@ -78,7 +79,7 @@ export const PresentationViewer: React.FC<PresentationViewerProps> = ({ slides, 
           {/* Header of the slide */}
           <div className="border-b border-slate-200 pb-3">
             <span className="text-xs font-bold tracking-wider uppercase text-blue-700 bg-blue-50 px-2.5 py-1 rounded">
-              Раздел {currentSlideIndex + 1}
+              {m.slides_section({ n: currentSlideIndex + 1 })}
             </span>
             <h2 className="text-xl md:text-2xl font-bold text-slate-900 mt-2 tracking-tight">
               {slide.title}
@@ -107,7 +108,7 @@ export const PresentationViewer: React.FC<PresentationViewerProps> = ({ slides, 
             <div className="mt-4 p-3 bg-blue-50/70 border-l-4 border-blue-600 rounded-r text-xs text-blue-950 flex items-start space-x-2.5">
               <BookOpen className="w-4 h-4 text-blue-700 shrink-0 mt-0.5" />
               <div>
-                <span className="font-semibold block text-blue-900">Нормативная основа Республики Казахстан:</span>
+                <span className="font-semibold block text-blue-900">{m.slides_npa()}</span>
                 <span>{slide.law_reference}</span>
               </div>
             </div>
@@ -118,7 +119,7 @@ export const PresentationViewer: React.FC<PresentationViewerProps> = ({ slides, 
             <div className="p-3 bg-amber-50/70 border-l-4 border-amber-500 rounded-r text-xs text-amber-950 flex items-start space-x-2.5">
               <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
               <div>
-                <span className="font-semibold block text-amber-900">Внимание / Требование инспекции:</span>
+                <span className="font-semibold block text-amber-900">{m.slides_warning()}</span>
                 <span>{slide.warning}</span>
               </div>
             </div>
@@ -127,8 +128,8 @@ export const PresentationViewer: React.FC<PresentationViewerProps> = ({ slides, 
 
         {/* Protection watermark */}
         <div className="mt-6 pt-4 border-t border-slate-200 flex items-center justify-between text-xs text-slate-400">
-          <span>SmartSafety LMS • Защита авторских материалов РК</span>
-          <span>Навигация: клавиши ← / →</span>
+          <span>{m.slides_watermark()}</span>
+          <span>{m.slides_nav()}</span>
         </div>
       </div>
 
@@ -140,7 +141,7 @@ export const PresentationViewer: React.FC<PresentationViewerProps> = ({ slides, 
           className="flex items-center space-x-1.5 px-4 py-2 rounded bg-white border border-slate-300 text-slate-700 disabled:opacity-40 hover:bg-slate-50 text-sm font-semibold transition"
         >
           <ChevronLeft className="w-4 h-4" />
-          <span>Назад</span>
+          <span>{m.common_back()}</span>
         </button>
 
         <div className="flex space-x-1.5 overflow-x-auto max-w-[200px] sm:max-w-none px-2">
@@ -164,7 +165,7 @@ export const PresentationViewer: React.FC<PresentationViewerProps> = ({ slides, 
           disabled={currentSlideIndex === slides.length - 1}
           className="flex items-center space-x-1.5 px-4 py-2 rounded bg-blue-600 text-white disabled:opacity-40 hover:bg-blue-700 text-sm font-semibold transition shadow-sm"
         >
-          <span>Вперед</span>
+          <span>{m.slides_next()}</span>
           <ChevronRight className="w-4 h-4" />
         </button>
       </div>

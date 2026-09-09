@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Send, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { api } from '../api/client';
+import { m } from '../paraglide/messages.js';
 
 interface DemoRequestModalProps {
   isOpen: boolean;
@@ -25,7 +26,7 @@ export const DemoRequestModal: React.FC<DemoRequestModalProps> = ({ isOpen, onCl
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name || !formData.tcName || !formData.phone) {
-      setError('Пожалуйста, заполните имя, название УЦ и контактный телефон');
+      setError(m.demo_required());
       return;
     }
 
@@ -35,7 +36,7 @@ export const DemoRequestModal: React.FC<DemoRequestModalProps> = ({ isOpen, onCl
       await api.sendDemoRequest(formData);
       setSuccess(true);
     } catch (err: any) {
-      setError(err.message || 'Ошибка отправки заявки');
+      setError(err.message || m.demo_error());
     } finally {
       setLoading(false);
     }
@@ -49,7 +50,7 @@ export const DemoRequestModal: React.FC<DemoRequestModalProps> = ({ isOpen, onCl
           <div className="flex items-center space-x-2.5">
             <ShieldCheck className="w-5 h-5 text-blue-400" />
             <h3 className="font-bold text-sm tracking-tight text-white">
-              Запрос демо платформы SmartSafety
+              {m.demo_title()}
             </h3>
           </div>
           <button
@@ -66,9 +67,9 @@ export const DemoRequestModal: React.FC<DemoRequestModalProps> = ({ isOpen, onCl
             <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
               <CheckCircle2 className="w-7 h-7" />
             </div>
-            <h4 className="text-lg font-bold text-slate-900">Заявка успешно принята</h4>
+            <h4 className="text-lg font-bold text-slate-900">{m.demo_success_title()}</h4>
             <p className="text-xs text-slate-600 leading-relaxed max-w-sm mx-auto">
-              Благодарим за интерес к SmartSafety. Наш методист свяжется с руководством <b>{formData.tcName}</b> по номеру <b>{formData.phone}</b> и проведет демонстрацию возможностей системы и интеграции протоколов.
+              {m.demo_success_text({ tc: formData.tcName, phone: formData.phone })}
             </p>
             <div className="pt-3">
               <button
@@ -78,34 +79,34 @@ export const DemoRequestModal: React.FC<DemoRequestModalProps> = ({ isOpen, onCl
                 }}
                 className="px-6 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded text-sm font-semibold"
               >
-                Закрыть окно
+                {m.demo_close()}
               </button>
             </div>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="p-6 space-y-4">
             <p className="text-xs text-slate-500 leading-relaxed">
-              Оставьте заявку, чтобы получить персональный доступ к тестовому контуру, расчет экономии для вашего учебного центра и комплект шаблонов протоколов по ст. 79 ТК РК.
+              {m.demo_lead()}
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700">
-                  Ваше имя и должность <span className="text-red-500">*</span>
+                  {m.demo_name()} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   required
                   value={formData.name}
                   onChange={e => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Имя Фамилия (Директор)"
+                  placeholder={m.demo_name_ph()}
                   className="w-full px-3 py-2 border border-slate-300 rounded text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
                 />
               </div>
 
               <div className="space-y-1">
                 <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700">
-                  Название Учебного Центра <span className="text-red-500">*</span>
+                  {m.demo_tc()} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -121,7 +122,7 @@ export const DemoRequestModal: React.FC<DemoRequestModalProps> = ({ isOpen, onCl
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700">
-                  Телефон в РК <span className="text-red-500">*</span>
+                  {m.demo_phone()} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="tel"
@@ -135,7 +136,7 @@ export const DemoRequestModal: React.FC<DemoRequestModalProps> = ({ isOpen, onCl
 
               <div className="space-y-1">
                 <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700">
-                  Рабочий Email
+                  {m.demo_email()}
                 </label>
                 <input
                   type="email"
@@ -149,33 +150,33 @@ export const DemoRequestModal: React.FC<DemoRequestModalProps> = ({ isOpen, onCl
 
             <div className="space-y-1">
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700">
-                Город базирования УЦ
+                {m.demo_city()}
               </label>
               <select
                 value={formData.city}
                 onChange={e => setFormData({ ...formData, city: e.target.value })}
                 className="w-full px-3 py-2 border border-slate-300 rounded text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white"
               >
-                <option value="г. Алматы">г. Алматы</option>
-                <option value="г. Астана">г. Астана</option>
-                <option value="г. Шымкент">г. Шымкент</option>
-                <option value="г. Атырау">г. Атырау</option>
-                <option value="г. Актау">г. Актау</option>
-                <option value="г. Караганда">г. Караганда</option>
-                <option value="г. Павлодар">г. Павлодар</option>
-                <option value="Другой регион РК">Другой регион РК</option>
+                <option value="г. Алматы">{m.city_almaty()}</option>
+                <option value="г. Астана">{m.city_astana()}</option>
+                <option value="г. Шымкент">{m.city_shymkent()}</option>
+                <option value="г. Атырау">{m.city_atyrau()}</option>
+                <option value="г. Актау">{m.city_aktau()}</option>
+                <option value="г. Караганда">{m.city_karaganda()}</option>
+                <option value="г. Павлодар">{m.city_pavlodar()}</option>
+                <option value="Другой регион РК">{m.city_other()}</option>
               </select>
             </div>
 
             <div className="space-y-1">
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700">
-                Комментарий или задачи УЦ (необязательно)
+                {m.demo_comment()}
               </label>
               <textarea
                 rows={2}
                 value={formData.message}
                 onChange={e => setFormData({ ...formData, message: e.target.value })}
-                placeholder="Например: обучение 300 сотрудников нефтегазового подрядчика в месяц"
+                placeholder={m.demo_comment_ph()}
                 className="w-full px-3 py-2 border border-slate-300 rounded text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
               />
             </div>
@@ -193,11 +194,11 @@ export const DemoRequestModal: React.FC<DemoRequestModalProps> = ({ isOpen, onCl
                 className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-semibold tracking-wide uppercase transition flex items-center justify-center space-x-2"
               >
                 {loading ? (
-                  <span>Отправка заявки...</span>
+                  <span>{m.demo_sending()}</span>
                 ) : (
                   <>
                     <Send className="w-3.5 h-3.5" />
-                    <span>Запросить демо</span>
+                    <span>{m.demo_submit()}</span>
                   </>
                 )}
               </button>

@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { db } from '../db/db.js';
 import crypto from 'node:crypto';
 import { authMiddleware } from '../middleware/auth.js';
+import { hashUserPassword, isBcryptHash, verifyUserPassword } from '../lib/passwords.js';
 
 export const authRouter = Router();
 
@@ -18,20 +19,35 @@ authRouter.post('/login', (req: Request, res: Response) => {
 
   // 1. Проверяем в таблице пользователей (Супер-Админ или Администратор УЦ)
   const userStmt = db.prepare(`
-    SELECT u.*, tc.name as tc_name
+    SELECT u.*, tc.name as tc_name, tc.active as tc_active, e.name as enterprise_name
     FROM users u
     LEFT JOIN training_centers tc ON u.tc_id = tc.id
+    LEFT JOIN enterprises e ON u.enterprise_id = e.id
     WHERE u.login = ?
   `);
   const user = userStmt.get(cleanLogin) as any;
 
-  if (user && user.password === cleanPassword) {
+  if (user && verifyUserPassword(user.password, cleanPassword)) {
+    if (!isBcryptHash(user.password)) {
+      db.prepare('UPDATE users SET password = ? WHERE id = ?').run(hashUserPassword(cleanPassword), user.id);
+    }
+    if (user.role !== 'super_admin' && user.tc_id && user.tc_active === 0) {
+      return res.status(403).json({ error: 'Доступ учебного центра приостановлен. Обратитесь к администрации платформы.' });
+    }
     const token = crypto.randomUUID();
     const insertSession = db.prepare(`
-      INSERT INTO sessions (token, role, user_id, login, full_name, tc_id, group_id, cadet_fio)
-      VALUES (?, ?, ?, ?, ?, ?, NULL, NULL)
+      INSERT INTO sessions (token, role, user_id, login, full_name, tc_id, group_id, cadet_fio, enterprise_id)
+      VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, ?)
     `);
-    insertSession.run(token, user.role, user.id, user.login, user.full_name, user.tc_id);
+    insertSession.run(
+      token,
+      user.role,
+      user.id,
+      user.login,
+      user.full_name,
+      user.tc_id,
+      user.enterprise_id ?? null
+    );
 
     return res.json({
       token,
@@ -39,13 +55,15 @@ authRouter.post('/login', (req: Request, res: Response) => {
       login: user.login,
       full_name: user.full_name,
       tc_id: user.tc_id,
-      tc_name: user.tc_name || 'Платформа SmartSafety'
+      tc_name: user.tc_name || 'Платформа SmartSafety',
+      enterprise_id: user.enterprise_id || undefined,
+      enterprise_name: user.enterprise_name || undefined
     });
   }
 
   // 2. Проверяем в таблице групп (Курсантский групповой доступ)
   const groupStmt = db.prepare(`
-    SELECT g.*, tc.name as tc_name, e.name as enterprise_name
+    SELECT g.*, tc.name as tc_name, tc.active as tc_active, e.name as enterprise_name
     FROM groups g
     JOIN training_centers tc ON g.tc_id = tc.id
     LEFT JOIN enterprises e ON g.enterprise_id = e.id
@@ -54,6 +72,9 @@ authRouter.post('/login', (req: Request, res: Response) => {
   const group = groupStmt.get(cleanLogin) as any;
 
   if (group && group.password === cleanPassword) {
+    if (group.tc_active === 0) {
+      return res.status(403).json({ error: 'Доступ учебного центра приостановлен. Обратитесь к администрации учебного центра.' });
+    }
     const token = crypto.randomUUID();
     const insertSession = db.prepare(`
       INSERT INTO sessions (token, role, user_id, login, full_name, tc_id, group_id, cadet_fio)
@@ -111,7 +132,9 @@ authRouter.get('/me', authMiddleware(), (req: Request, res: Response) => {
     tc_name: session.tc_name,
     group_id: session.group_id,
     group_name: session.group_name,
-    cadet_fio: session.cadet_fio
+    cadet_fio: session.cadet_fio,
+    enterprise_id: session.enterprise_id,
+    enterprise_name: session.enterprise_name
   });
 });
 
@@ -154,6 +177,20 @@ authRouter.get('/demo-credentials', (_req: Request, res: Response) => {
         login: 'admin_prombez',
         password: 'prom123',
         description: 'Просмотр аналитики и протоколов своего УЦ'
+      }
+    ],
+    company_admin: [
+      {
+        title: 'Руководство ТОО «КазМунайПром Сервис»',
+        login: 'admin_kazmunay',
+        password: 'company123',
+        description: 'Курсанты компании, прошедшие обучение в УЦ'
+      },
+      {
+        title: 'Руководство АО «Самрук-Энерго Сети»',
+        login: 'admin_samruk',
+        password: 'samruk123',
+        description: 'Курсанты компании, прошедшие обучение в УЦ'
       }
     ],
     super_admin: [

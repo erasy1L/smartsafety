@@ -6,6 +6,8 @@ import { coursesRouter } from './routes/courses.js';
 import { testsRouter } from './routes/tests.js';
 import { reportsRouter } from './routes/reports.js';
 import { adminRouter } from './routes/admin.js';
+import { billingRouter } from './routes/billing.js';
+import { groupsRouter } from './routes/groups.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -25,6 +27,8 @@ app.use('/api/courses', coursesRouter);
 app.use('/api/tests', testsRouter);
 app.use('/api/reports', reportsRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/billing', billingRouter);
+app.use('/api/groups', groupsRouter);
 
 // Обработка заявок с публичного сайта (форма "Запросить презентацию" и "Контакты")
 app.post('/api/contact/demo-request', (req, res) => {

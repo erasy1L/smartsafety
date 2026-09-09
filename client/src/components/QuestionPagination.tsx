@@ -1,4 +1,5 @@
 import React from 'react';
+import { m } from '../paraglide/messages.js';
 
 type PaginationItem = number | 'ellipsis';
 
@@ -55,7 +56,7 @@ export const QuestionPagination: React.FC<QuestionPaginationProps> = ({
   return (
     <nav
       className="flex items-center justify-center flex-wrap gap-1"
-      aria-label="Навигация по вопросам"
+      aria-label={m.questions_nav()}
     >
       {items.map((item, idx) =>
         item === 'ellipsis' ? (
